@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <base target="_top">
+
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>CRUD Spreadsheet App</title>
@@ -15,7 +16,7 @@
       margin: 0;
       padding: 30px;
       background: #f3f4f6;
-      font-family: Arial, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
       color: #1f2937;
     }
 
@@ -24,21 +25,26 @@
       margin: auto;
     }
 
-    h1 {
-      margin-bottom: 5px;
+    .header {
+      margin-bottom: 25px;
     }
 
-    .subtitle {
+    .header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 0;
       color: #6b7280;
-      margin-bottom: 25px;
     }
 
     .card {
       background: white;
+      border-radius: 12px;
       padding: 25px;
       margin-bottom: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
     }
 
     .form-grid {
@@ -47,19 +53,30 @@
       gap: 15px;
     }
 
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
     label {
-      display: block;
       font-weight: bold;
-      margin-bottom: 6px;
+      margin-bottom: 7px;
+      font-size: 14px;
     }
 
     input,
     select {
-      width: 100%;
-      padding: 11px;
+      padding: 11px 12px;
       border: 1px solid #d1d5db;
       border-radius: 7px;
       font-size: 14px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
     }
 
     .buttons {
@@ -71,38 +88,52 @@
     button {
       border: none;
       border-radius: 7px;
-      padding: 10px 16px;
-      cursor: pointer;
+      padding: 11px 18px;
+      font-size: 14px;
       font-weight: bold;
+      cursor: pointer;
     }
 
-    .primary {
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
       background: #2563eb;
       color: white;
     }
 
-    .secondary {
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
       background: #6b7280;
       color: white;
     }
 
-    .edit {
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .btn-edit {
       background: #f59e0b;
       color: white;
-      padding: 7px 10px;
+      padding: 7px 11px;
     }
 
-    .delete {
+    .btn-delete {
       background: #dc2626;
       color: white;
-      padding: 7px 10px;
+      padding: 7px 11px;
     }
 
-    .search {
+    .search-box {
       margin-bottom: 15px;
     }
 
-    .search input {
+    .search-box input {
       width: 100%;
     }
 
@@ -121,9 +152,15 @@
       padding: 12px;
       border-bottom: 1px solid #e5e7eb;
       text-align: left;
+      font-size: 14px;
     }
 
     th {
+      background: #f9fafb;
+      font-weight: bold;
+    }
+
+    tr:hover td {
       background: #f9fafb;
     }
 
@@ -132,47 +169,77 @@
       gap: 5px;
     }
 
-    .message {
-      display: none;
-      padding: 12px;
-      margin-bottom: 15px;
-      border-radius: 7px;
+    .status {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
     }
 
-    .success {
+    .status-active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .message {
+      padding: 12px 15px;
+      border-radius: 7px;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    .message.success {
       display: block;
       background: #dcfce7;
       color: #166534;
     }
 
-    .error {
+    .message.error {
       display: block;
       background: #fee2e2;
       color: #991b1b;
     }
 
-    .active {
-      color: #166534;
-      font-weight: bold;
+    .loading {
+      text-align: center;
+      padding: 30px;
+      color: #6b7280;
     }
 
-    .inactive {
-      color: #991b1b;
-      font-weight: bold;
+    .empty {
+      text-align: center;
+      padding: 30px;
+      color: #6b7280;
     }
 
-    .pending {
-      color: #92400e;
-      font-weight: bold;
+    .record-count {
+      margin-bottom: 15px;
+      color: #6b7280;
+      font-size: 14px;
     }
 
-    @media(max-width: 800px) {
+    @media (max-width: 800px) {
       body {
         padding: 15px;
       }
 
       .form-grid {
         grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 18px;
       }
     }
   </style>
@@ -182,17 +249,14 @@
 
 <div class="container">
 
-  <h1>CRUD Spreadsheet App</h1>
-
-  <p class="subtitle">
-    Manage records stored in Google Sheets.
-  </p>
+  <div class="header">
+    <h1>CRUD Spreadsheet App</h1>
+    <p>Manage records stored in Google Sheets.</p>
+  </div>
 
   <div id="message" class="message"></div>
 
-
   <!-- FORM -->
-
   <div class="card">
 
     <h2 id="formTitle">Add Record</h2>
@@ -203,8 +267,8 @@
 
       <div class="form-grid">
 
-        <div>
-          <label>Name</label>
+        <div class="form-group">
+          <label for="name">Name</label>
 
           <input
             type="text"
@@ -214,9 +278,8 @@
           >
         </div>
 
-
-        <div>
-          <label>Email</label>
+        <div class="form-group">
+          <label for="email">Email</label>
 
           <input
             type="email"
@@ -226,9 +289,8 @@
           >
         </div>
 
-
-        <div>
-          <label>Status</label>
+        <div class="form-group">
+          <label for="status">Status</label>
 
           <select id="status" required>
 
@@ -249,16 +311,16 @@
             </option>
 
           </select>
+
         </div>
 
       </div>
-
 
       <div class="buttons">
 
         <button
           type="submit"
-          class="primary"
+          class="btn-primary"
           id="saveButton"
         >
           Add Record
@@ -266,10 +328,10 @@
 
         <button
           type="button"
-          class="secondary"
+          class="btn-secondary"
           id="cancelButton"
           onclick="resetForm()"
-          style="display:none"
+          style="display:none;"
         >
           Cancel
         </button>
@@ -281,23 +343,28 @@
   </div>
 
 
-  <!-- TABLE -->
-
+  <!-- RECORDS -->
   <div class="card">
 
     <h2>Records</h2>
 
-    <div class="search">
+    <div class="search-box">
 
       <input
         type="text"
         id="search"
-        placeholder="Search records..."
+        placeholder="Search by name, email or status..."
         onkeyup="filterRecords()"
       >
 
     </div>
 
+    <div
+      class="record-count"
+      id="recordCount"
+    >
+      Loading...
+    </div>
 
     <div class="table-container">
 
@@ -306,12 +373,14 @@
         <thead>
 
           <tr>
+
             <th>Name</th>
             <th>Email</th>
             <th>Status</th>
             <th>Created</th>
             <th>Updated</th>
             <th>Actions</th>
+
           </tr>
 
         </thead>
@@ -329,102 +398,110 @@
 
 <script>
 
-/*
-
-==================================================
-GOOGLE APPS SCRIPT WEB APP URL
-==================================================
-
-Replace the value below with your deployed
-Google Apps Script Web App URL.
-
-Example:
-
-https://script.google.com/macros/s/XXXXXXXXXXXX/exec
-*/
+/* ============================================
+   APPS SCRIPT WEB APP URL
+============================================ */
 
 const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbxTUk4UxhOkPprBDqn8F7SOHmFenve78Uzu8J2zkzNCYLSkhtb0KIw-A2sSMEUv6vISPQ/exec";
+  "https://script.google.com/macros/s/AKfycbwUqbN2PLuw3x5-tfj2NHuDM6YgvNYutMhAf1qwKNuJ-WRJWh3k3WZlL0Ia8p_4e6dgag/exec";
 
 
 let records = [];
+
 let editing = false;
 
 
-/*
-==================================================
-API REQUEST
-==================================================
-*/
+/* ============================================
+   API REQUEST
+============================================ */
 
-async function api(action, data = {}) {
+async function apiRequest(action, data = {}) {
 
-  const url =
-    WEB_APP_URL +
-    "?action=" +
-    encodeURIComponent(action);
+  const response =
+    await fetch(WEB_APP_URL, {
 
+      method: "POST",
 
-  const response = await fetch(url, {
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
 
-    method: "POST",
+      body: JSON.stringify({
 
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
+        action: action,
 
-    body: JSON.stringify(data)
+        data: data
 
-  });
+      })
+
+    });
 
 
   if (!response.ok) {
 
     throw new Error(
-      "Server request failed."
+      "Unable to connect to Apps Script."
     );
 
   }
 
 
-  return await response.json();
+  const result =
+    await response.json();
+
+
+  if (!result.success) {
+
+    throw new Error(
+      result.message ||
+      "Apps Script returned an error."
+    );
+
+  }
+
+
+  return result;
 
 }
 
 
-/*
-==================================================
-LOAD RECORDS
-==================================================
-*/
+/* ============================================
+   LOAD RECORDS
+============================================ */
 
 async function loadRecords() {
+
+  document.getElementById(
+    'recordCount'
+  ).textContent = 'Loading...';
+
 
   try {
 
     const result =
-      await api("read");
+      await apiRequest("read");
 
-    if (!result.success) {
-
-      throw new Error(
-        result.message
-      );
-
-    }
 
     records =
       result.data || [];
+
 
     renderRecords(records);
 
   }
 
-  catch(error) {
+  catch (error) {
+
+    console.error(error);
+
 
     showMessage(
-      error.message,
-      "error"
+
+      error.message ||
+      'Failed to load records.',
+
+      'error'
+
     );
 
   }
@@ -432,41 +509,60 @@ async function loadRecords() {
 }
 
 
-/*
-==================================================
-RENDER RECORDS
-==================================================
-*/
+/* ============================================
+   DISPLAY RECORDS
+============================================ */
 
 function renderRecords(data) {
 
   const table =
     document.getElementById(
-      "recordsTable"
+      'recordsTable'
     );
 
-  table.innerHTML = "";
+
+  table.innerHTML = '';
+
+
+  document.getElementById(
+    'recordCount'
+  ).textContent =
+    data.length +
+    ' record(s)';
 
 
   if (data.length === 0) {
 
     table.innerHTML = `
+
       <tr>
-        <td colspan="6"
-            style="text-align:center;padding:30px">
+
+        <td
+          colspan="6"
+          class="empty"
+        >
           No records found.
         </td>
+
       </tr>
+
     `;
 
     return;
+
   }
 
 
   data.forEach(function(record) {
 
     const row =
-      document.createElement("tr");
+      document.createElement('tr');
+
+
+    const statusClass =
+      getStatusClass(
+        record.status
+      );
 
 
     row.innerHTML = `
@@ -479,8 +575,14 @@ function renderRecords(data) {
         ${escapeHtml(record.email)}
       </td>
 
-      <td class="${String(record.status).toLowerCase()}">
-        ${escapeHtml(record.status)}
+      <td>
+
+        <span
+          class="status ${statusClass}"
+        >
+          ${escapeHtml(record.status)}
+        </span>
+
       </td>
 
       <td>
@@ -496,14 +598,14 @@ function renderRecords(data) {
         <div class="actions">
 
           <button
-            class="edit"
+            class="btn-edit"
             onclick="editRecord('${escapeJs(record.id)}')"
           >
             Edit
           </button>
 
           <button
-            class="delete"
+            class="btn-delete"
             onclick="deleteRecord('${escapeJs(record.id)}')"
           >
             Delete
@@ -523,44 +625,64 @@ function renderRecords(data) {
 }
 
 
-/*
-==================================================
-CREATE / UPDATE
-==================================================
-*/
+/* ============================================
+   CREATE / UPDATE
+============================================ */
 
 document
-  .getElementById("recordForm")
+  .getElementById('recordForm')
   .addEventListener(
-    "submit",
+    'submit',
     async function(event) {
 
       event.preventDefault();
 
 
+      const id =
+        document.getElementById(
+          'recordId'
+        ).value;
+
+
       const data = {
 
-        id:
-          document.getElementById(
-            "recordId"
-          ).value,
+        id: id,
 
         name:
           document.getElementById(
-            "name"
+            'name'
           ).value.trim(),
 
         email:
           document.getElementById(
-            "email"
+            'email'
           ).value.trim(),
 
         status:
           document.getElementById(
-            "status"
+            'status'
           ).value
 
       };
+
+
+      if (
+        !data.name ||
+        !data.email ||
+        !data.status
+      ) {
+
+        showMessage(
+          'Please complete all fields.',
+          'error'
+        );
+
+        return;
+
+      }
+
+
+      setLoading(true);
 
 
       try {
@@ -571,7 +693,7 @@ document
         if (editing) {
 
           result =
-            await api(
+            await apiRequest(
               "update",
               data
             );
@@ -579,7 +701,7 @@ document
         } else {
 
           result =
-            await api(
+            await apiRequest(
               "create",
               data
             );
@@ -587,33 +709,37 @@ document
         }
 
 
-        if (!result.success) {
-
-          throw new Error(
-            result.message
-          );
-
-        }
-
-
         showMessage(
-          result.message,
-          "success"
+          result.message ||
+          'Operation completed.',
+          'success'
         );
 
 
         resetForm();
 
-        loadRecords();
+
+        await loadRecords();
+
 
       }
 
-      catch(error) {
+      catch (error) {
+
+        console.error(error);
+
 
         showMessage(
-          error.message,
-          "error"
+          error.message ||
+          'Operation failed.',
+          'error'
         );
+
+      }
+
+      finally {
+
+        setLoading(false);
 
       }
 
@@ -621,26 +747,28 @@ document
   );
 
 
-/*
-==================================================
-EDIT
-==================================================
-*/
+/* ============================================
+   EDIT RECORD
+============================================ */
 
 function editRecord(id) {
 
   const record =
     records.find(
-      item =>
-        String(item.id) === String(id)
+      function(item) {
+
+        return String(item.id) ===
+          String(id);
+
+      }
     );
 
 
   if (!record) {
 
     showMessage(
-      "Record not found.",
-      "error"
+      'Record not found.',
+      'error'
     );
 
     return;
@@ -652,71 +780,80 @@ function editRecord(id) {
 
 
   document.getElementById(
-    "recordId"
-  ).value = record.id;
-
-
-  document.getElementById(
-    "name"
-  ).value = record.name;
-
-
-  document.getElementById(
-    "email"
-  ).value = record.email;
-
-
-  document.getElementById(
-    "status"
-  ).value = record.status;
-
-
-  document.getElementById(
-    "formTitle"
+    'formTitle'
   ).textContent =
-    "Edit Record";
+    'Edit Record';
 
 
   document.getElementById(
-    "saveButton"
+    'saveButton'
   ).textContent =
-    "Update Record";
+    'Update Record';
 
 
   document.getElementById(
-    "cancelButton"
+    'cancelButton'
   ).style.display =
-    "inline-block";
+    'inline-block';
+
+
+  document.getElementById(
+    'recordId'
+  ).value =
+    record.id;
+
+
+  document.getElementById(
+    'name'
+  ).value =
+    record.name;
+
+
+  document.getElementById(
+    'email'
+  ).value =
+    record.email;
+
+
+  document.getElementById(
+    'status'
+  ).value =
+    record.status;
 
 
   window.scrollTo({
+
     top: 0,
-    behavior: "smooth"
+
+    behavior: 'smooth'
+
   });
 
 }
 
 
-/*
-==================================================
-DELETE
-==================================================
-*/
+/* ============================================
+   DELETE RECORD
+============================================ */
 
 async function deleteRecord(id) {
 
   const record =
     records.find(
-      item =>
-        String(item.id) === String(id)
+      function(item) {
+
+        return String(item.id) ===
+          String(id);
+
+      }
     );
 
 
   if (!record) {
 
     showMessage(
-      "Record not found.",
-      "error"
+      'Record not found.',
+      'error'
     );
 
     return;
@@ -724,21 +861,30 @@ async function deleteRecord(id) {
   }
 
 
-  if (!confirm(
-    "Delete " +
-    record.name +
-    "?"
-  )) {
+  const confirmed =
+    confirm(
+
+      'Are you sure you want to delete "' +
+      record.name +
+      '"?'
+
+    );
+
+
+  if (!confirmed) {
 
     return;
 
   }
 
 
+  setLoading(true);
+
+
   try {
 
     const result =
-      await api(
+      await apiRequest(
         "delete",
         {
           id: id
@@ -746,42 +892,42 @@ async function deleteRecord(id) {
       );
 
 
-    if (!result.success) {
-
-      throw new Error(
-        result.message
-      );
-
-    }
-
-
     showMessage(
-      result.message,
-      "success"
+      result.message ||
+      'Record deleted successfully.',
+      'success'
     );
 
 
-    loadRecords();
+    await loadRecords();
 
   }
 
-  catch(error) {
+  catch (error) {
+
+    console.error(error);
+
 
     showMessage(
-      error.message,
-      "error"
+      error.message ||
+      'Failed to delete record.',
+      'error'
     );
+
+  }
+
+  finally {
+
+    setLoading(false);
 
   }
 
 }
 
 
-/*
-==================================================
-RESET FORM
-==================================================
-*/
+/* ============================================
+   RESET FORM
+============================================ */
 
 function resetForm() {
 
@@ -789,49 +935,51 @@ function resetForm() {
 
 
   document
-    .getElementById("recordForm")
+    .getElementById(
+      'recordForm'
+    )
     .reset();
 
 
   document.getElementById(
-    "recordId"
-  ).value = "";
+    'recordId'
+  ).value = '';
 
 
   document.getElementById(
-    "formTitle"
+    'formTitle'
   ).textContent =
-    "Add Record";
+    'Add Record';
 
 
   document.getElementById(
-    "saveButton"
+    'saveButton'
   ).textContent =
-    "Add Record";
+    'Add Record';
 
 
   document.getElementById(
-    "cancelButton"
+    'cancelButton'
   ).style.display =
-    "none";
+    'none';
 
 }
 
 
-/*
-==================================================
-SEARCH
-==================================================
-*/
+/* ============================================
+   SEARCH / FILTER
+============================================ */
 
 function filterRecords() {
 
   const search =
-    document.getElementById(
-      "search"
-    ).value
-    .toLowerCase()
-    .trim();
+    document
+      .getElementById(
+        'search'
+      )
+      .value
+      .toLowerCase()
+      .trim();
 
 
   if (!search) {
@@ -876,11 +1024,43 @@ function filterRecords() {
 }
 
 
-/*
-==================================================
-MESSAGE
-==================================================
-*/
+/* ============================================
+   STATUS CLASS
+============================================ */
+
+function getStatusClass(status) {
+
+  switch (
+    String(status).toLowerCase()
+  ) {
+
+    case 'active':
+
+      return 'status-active';
+
+
+    case 'inactive':
+
+      return 'status-inactive';
+
+
+    case 'pending':
+
+      return 'status-pending';
+
+
+    default:
+
+      return '';
+
+  }
+
+}
+
+
+/* ============================================
+   MESSAGE
+============================================ */
 
 function showMessage(
   message,
@@ -889,7 +1069,7 @@ function showMessage(
 
   const element =
     document.getElementById(
-      "message"
+      'message'
     );
 
 
@@ -898,14 +1078,14 @@ function showMessage(
 
 
   element.className =
-    "message " + type;
+    'message ' + type;
 
 
   setTimeout(
     function() {
 
       element.className =
-        "message";
+        'message';
 
     },
     4000
@@ -914,46 +1094,108 @@ function showMessage(
 }
 
 
-/*
-==================================================
-ESCAPE HTML
-==================================================
-*/
+/* ============================================
+   LOADING
+============================================ */
+
+function setLoading(
+  isLoading
+) {
+
+  const button =
+    document.getElementById(
+      'saveButton'
+    );
+
+
+  if (isLoading) {
+
+    button.disabled = true;
+
+    button.textContent =
+      'Saving...';
+
+  } else {
+
+    button.disabled = false;
+
+    button.textContent =
+      editing
+        ? 'Update Record'
+        : 'Add Record';
+
+  }
+
+}
+
+
+/* ============================================
+   HTML ESCAPE
+============================================ */
 
 function escapeHtml(value) {
 
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return String(value ?? '')
+
+    .replace(
+      /&/g,
+      '&amp;'
+    )
+
+    .replace(
+      /</g,
+      '&lt;'
+    )
+
+    .replace(
+      />/g,
+      '&gt;'
+    )
+
+    .replace(
+      /"/g,
+      '&quot;'
+    )
+
+    .replace(
+      /'/g,
+      '&#039;'
+    );
 
 }
 
 
-/*
-==================================================
-ESCAPE JAVASCRIPT
-==================================================
-*/
+/* ============================================
+   JAVASCRIPT ESCAPE
+============================================ */
 
 function escapeJs(value) {
 
-  return String(value ?? "")
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'");
+  return String(value ?? '')
+
+    .replace(
+      /\\/g,
+      '\\\\'
+    )
+
+    .replace(
+      /'/g,
+      "\\'"
+    );
 
 }
 
 
-/*
-==================================================
-START APPLICATION
-==================================================
-*/
+/* ============================================
+   INITIAL LOAD
+============================================ */
 
-loadRecords();
+window.onload =
+  function() {
+
+    loadRecords();
+
+  };
 
 </script>
 
