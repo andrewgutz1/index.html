@@ -1,1203 +1,851 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <base target="_top">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOTA STASH — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DOTA STASH — token system
+   --void       #0b0908  page background, near-black warm char
+   --panel      #1c1613  panel / card background
+   --panel-2    #241c17  secondary panel (inputs)
+   --blood      #6f1b1b  deep dire red
+   --ember      #d1442f  bright accent red (CTAs, danger)
+   --gold       #c9a227  ancient gold (borders, headings)
+   --gold-br    #f0d78c  bright gold (hover / highlight text)
+   --parchment  #d8c9a3  primary body text
+   --muted      #8a7c66  secondary / caption text
+   --radiant    #4f7942  radiant green accent
+   ============================================================ */
+:root{
+  --void:#0b0908;
+  --panel:#1c1613;
+  --panel-2:#241c17;
+  --blood:#6f1b1b;
+  --ember:#d1442f;
+  --gold:#c9a227;
+  --gold-br:#f0d78c;
+  --parchment:#d8c9a3;
+  --muted:#8a7c66;
+  --radiant:#4f7942;
+  --display: 'Cinzel', serif;
+  --body: 'EB Garamond', serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  background:var(--void);
+  color:var(--parchment);
+  font-family:var(--body);
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+}
+/* ambient texture */
+body::before{
+  content:"";
+  position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse 900px 600px at 12% 15%, rgba(79,121,66,0.16), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 88% 85%, rgba(209,68,47,0.16), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+  pointer-events:none;
+  z-index:0;
+}
+::selection{ background:var(--gold); color:var(--void); }
+::-webkit-scrollbar{ width:10px; }
+::-webkit-scrollbar-track{ background:var(--void); }
+::-webkit-scrollbar-thumb{ background:var(--panel-2); border:1px solid var(--gold); }
 
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+a{ color:var(--gold-br); }
 
-  <title>CRUD Spreadsheet App</title>
+h1,h2,h3,.brand,.mmr-num{ font-family:var(--display); letter-spacing:.04em; }
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+button{ font-family:var(--display); cursor:pointer; }
+input, select, textarea{ font-family:var(--body); }
 
-    body {
-      margin: 0;
-      padding: 30px;
-      background: #f3f4f6;
-      font-family: Arial, Helvetica, sans-serif;
-      color: #1f2937;
-    }
+.hidden{ display:none !important; }
 
-    .container {
-      max-width: 1100px;
-      margin: auto;
-    }
+/* ---------------- header rune divider ---------------- */
+.rune-divider{
+  display:flex; align-items:center; gap:14px; margin: 4px 0 18px;
+}
+.rune-divider::before, .rune-divider::after{
+  content:""; flex:1; height:1px;
+  background:linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.rune-divider span{
+  font-family:var(--display); font-size:.72rem; letter-spacing:.3em;
+  color:var(--gold); text-transform:uppercase;
+}
 
-    .header {
-      margin-bottom: 25px;
-    }
+/* ======================================================
+   AUTH SCREEN
+   ====================================================== */
+#authScreen{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  position:relative;
+  z-index:1;
+  padding:24px;
+}
+#authScreen::before{
+  content:"";
+  position:absolute; inset:0;
+  background:
+    linear-gradient(115deg, rgba(79,121,66,0.20) 0%, transparent 42%),
+    linear-gradient(-115deg, rgba(111,27,27,0.28) 0%, transparent 42%);
+  z-index:-1;
+}
+.auth-card{
+  width:100%; max-width:440px;
+  background:var(--panel);
+  border:1px solid var(--gold);
+  position:relative;
+  padding:38px 34px 30px;
+  clip-path: polygon(24px 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%, 0 24px);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 30px 60px -20px rgba(0,0,0,0.7);
+}
+.auth-card::before{
+  content:"";
+  position:absolute; inset:7px;
+  border:1px solid rgba(201,162,39,0.35);
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  pointer-events:none;
+}
+.brand{
+  text-align:center; font-size:1.9rem; font-weight:900;
+  color:var(--gold-br);
+  text-shadow: 0 0 18px rgba(201,162,39,0.35);
+}
+.brand small{
+  display:block; font-family:var(--body); font-style:italic; font-weight:400;
+  font-size:.85rem; color:var(--muted); letter-spacing:.05em; margin-top:4px;
+}
+.auth-tabs{
+  display:flex; margin-top:26px; border:1px solid var(--gold);
+}
+.auth-tabs button{
+  flex:1; padding:10px 0; background:var(--panel-2); color:var(--muted);
+  border:none; font-size:.82rem; letter-spacing:.12em; text-transform:uppercase;
+  transition:.2s;
+}
+.auth-tabs button.active{
+  background:var(--blood); color:var(--gold-br);
+}
+.auth-form{ margin-top:24px; display:flex; flex-direction:column; gap:16px; }
+.field label{
+  display:block; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--gold); margin-bottom:6px; font-family:var(--display);
+}
+.field input{
+  width:100%; background:var(--panel-2); border:1px solid #3a2f24;
+  color:var(--parchment); padding:11px 12px; font-size:.98rem;
+  outline:none; transition:.2s;
+}
+.field input:focus{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(201,162,39,0.15); }
+.btn-primary{
+  margin-top:6px; background:linear-gradient(180deg, var(--ember), var(--blood));
+  color:#fff2e6; border:1px solid var(--gold); padding:13px 0;
+  font-size:.86rem; letter-spacing:.18em; text-transform:uppercase;
+  transition:.2s;
+}
+.btn-primary:hover{ filter:brightness(1.12); transform:translateY(-1px); }
+.btn-primary:active{ transform:translateY(0); }
+.auth-msg{ min-height:20px; font-size:.85rem; text-align:center; font-family:var(--mono); }
+.auth-msg.err{ color:#e0665a; }
+.auth-msg.ok{ color:#8fbf7a; }
+.auth-hint{ text-align:center; color:var(--muted); font-size:.78rem; margin-top:14px; font-style:italic; }
 
-    .header h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
+/* ======================================================
+   APP SHELL
+   ====================================================== */
+#appScreen{ position:relative; z-index:1; min-height:100vh; padding-bottom:60px; }
 
-    .header p {
-      margin: 0;
-      color: #6b7280;
-    }
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 32px; border-bottom:1px solid var(--gold);
+  background:linear-gradient(180deg, rgba(28,22,19,0.95), rgba(28,22,19,0.75));
+  position:sticky; top:0; backdrop-filter:blur(6px); z-index:10;
+}
+.topbar .brand{ font-size:1.3rem; text-align:left; }
+.logout-btn{
+  background:transparent; border:1px solid var(--blood); color:#e0665a;
+  padding:8px 16px; font-size:.75rem; letter-spacing:.14em; text-transform:uppercase;
+}
+.logout-btn:hover{ background:var(--blood); color:#fff; }
 
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 25px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-    }
+.container{ max-width:1180px; margin:0 auto; padding:28px 24px; }
 
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
-    }
+/* ---------------- profile panel ---------------- */
+.profile-panel{
+  background:var(--panel); border:1px solid var(--gold);
+  padding:26px 28px; margin-bottom:36px;
+  display:grid; grid-template-columns:auto 1fr auto; gap:28px; align-items:center;
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+}
+.avatar-block{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+.avatar{
+  width:78px; height:78px; border:2px solid var(--gold); object-fit:cover;
+  clip-path: polygon(15% 0,85% 0,100% 15%,100% 85%,85% 100%,15% 100%,0 85%,0 15%);
+  background:var(--panel-2);
+}
+.medal{
+  width:56px; height:56px; display:grid; place-items:center;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  border:2px solid var(--gold-br);
+  font-family:var(--display); font-weight:900; font-size:.65rem; color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,0.6);
+}
+.profile-main h2{ font-size:1.4rem; color:var(--gold-br); }
+.profile-tag{ color:var(--muted); font-size:.85rem; font-style:italic; margin-top:2px; }
+.stat-row{ display:flex; gap:26px; margin-top:14px; flex-wrap:wrap; }
+.stat{ display:flex; flex-direction:column; }
+.stat .label{ font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+.stat .val{ font-family:var(--mono); font-size:1.05rem; color:var(--parchment); font-weight:700; }
+.profile-actions{ display:flex; flex-direction:column; gap:8px; }
+.btn-ghost{
+  background:var(--panel-2); border:1px solid var(--gold); color:var(--gold-br);
+  padding:8px 16px; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+}
+.btn-ghost:hover{ background:var(--gold); color:var(--void); }
+.btn-danger{
+  background:transparent; border:1px solid var(--blood); color:#e0665a;
+  padding:8px 16px; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+}
+.btn-danger:hover{ background:var(--blood); color:#fff; }
 
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
+/* ---------------- section headers ---------------- */
+.section-head{
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px;
+}
+.section-head h2{ font-size:1.15rem; color:var(--gold-br); letter-spacing:.08em; }
+.section-head .sub{ color:var(--muted); font-size:.8rem; font-style:italic; }
 
-    label {
-      font-weight: bold;
-      margin-bottom: 7px;
-      font-size: 14px;
-    }
+/* ---------------- add item form ---------------- */
+.item-form{
+  background:var(--panel); border:1px solid var(--gold); padding:20px;
+  display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:26px;
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+.item-form .field{ display:flex; flex-direction:column; gap:5px; }
+.item-form .field.wide{ grid-column:span 2; }
+.item-form label{ font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-family:var(--display); }
+.item-form input, .item-form textarea{
+  background:var(--panel-2); border:1px solid #3a2f24; color:var(--parchment);
+  padding:8px 10px; font-size:.85rem; outline:none;
+}
+.item-form input:focus, .item-form textarea:focus{ border-color:var(--gold); }
+.item-form .actions{ grid-column:1/-1; display:flex; justify-content:flex-end; gap:10px; }
 
-    input,
-    select {
-      padding: 11px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 7px;
-      font-size: 14px;
-      outline: none;
-    }
+/* ---------------- item grid ---------------- */
+.item-grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:18px;
+}
+.item-card{
+  background:var(--panel); border:1px solid #3a2f24; position:relative;
+  padding:16px 14px 14px; transition:.2s; overflow:hidden;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.item-card:hover{
+  border-color:var(--gold); transform:translateY(-3px);
+  box-shadow:0 12px 26px -10px rgba(201,162,39,0.35);
+}
+.item-card .price-tag{
+  position:absolute; top:0; right:0;
+  background:var(--blood); color:var(--gold-br);
+  font-family:var(--mono); font-size:.72rem; font-weight:700;
+  padding:4px 10px 4px 14px;
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%);
+}
+.item-img-wrap{
+  width:100%; height:96px; display:grid; place-items:center;
+  background:radial-gradient(circle at 50% 40%, rgba(201,162,39,0.14), transparent 70%);
+  border:1px solid #2c231b; margin-bottom:12px;
+}
+.item-img-wrap img{ max-width:76%; max-height:76%; image-rendering:-webkit-optimize-contrast; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+.item-card h3{ font-size:.95rem; color:var(--gold-br); font-family:var(--display); margin-bottom:6px; }
+.item-card p{ font-size:.8rem; color:var(--muted); line-height:1.4; min-height:52px; }
+.item-card .card-actions{ display:flex; gap:8px; margin-top:12px; }
+.item-card .card-actions button{
+  flex:1; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; padding:6px 0;
+  background:var(--panel-2); border:1px solid var(--gold); color:var(--gold-br);
+}
+.item-card .card-actions button.del{ border-color:var(--blood); color:#e0665a; }
+.item-card .card-actions button:hover{ background:var(--gold); color:var(--void); }
+.item-card .card-actions button.del:hover{ background:var(--blood); color:#fff; }
 
-    input:focus,
-    select:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-    }
+.empty-note{ color:var(--muted); font-style:italic; padding:30px 0; text-align:center; }
+.loading-note{ color:var(--gold); font-family:var(--mono); font-size:.85rem; padding:20px 0; text-align:center; letter-spacing:.08em; }
 
-    .buttons {
-      margin-top: 20px;
-      display: flex;
-      gap: 10px;
-    }
+/* ---------------- modal (edit) ---------------- */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(6,4,3,0.72); backdrop-filter:blur(3px);
+  display:grid; place-items:center; z-index:100; padding:20px;
+}
+.modal{
+  background:var(--panel); border:1px solid var(--gold); padding:26px 26px 20px;
+  width:100%; max-width:420px;
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+.modal h3{ color:var(--gold-br); margin-bottom:18px; font-size:1.05rem; }
+.modal .field{ margin-bottom:14px; display:flex; flex-direction:column; gap:5px; }
+.modal .field label{ font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-family:var(--display); }
+.modal input, .modal select, .modal textarea{
+  background:var(--panel-2); border:1px solid #3a2f24; color:var(--parchment);
+  padding:9px 10px; font-size:.88rem; outline:none;
+}
+.modal .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
 
-    button {
-      border: none;
-      border-radius: 7px;
-      padding: 11px 18px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+.toast{
+  position:fixed; bottom:22px; right:22px; z-index:200;
+  background:var(--panel); border:1px solid var(--gold); color:var(--parchment);
+  padding:12px 18px; font-family:var(--mono); font-size:.82rem;
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);
+  transform:translateY(120%); opacity:0; transition:.3s;
+}
+.toast.show{ transform:translateY(0); opacity:1; }
+.toast.err{ border-color:var(--blood); color:#e0665a; }
 
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: #2563eb;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #1d4ed8;
-    }
-
-    .btn-secondary {
-      background: #6b7280;
-      color: white;
-    }
-
-    .btn-secondary:hover {
-      background: #4b5563;
-    }
-
-    .btn-edit {
-      background: #f59e0b;
-      color: white;
-      padding: 7px 11px;
-    }
-
-    .btn-delete {
-      background: #dc2626;
-      color: white;
-      padding: 7px 11px;
-    }
-
-    .search-box {
-      margin-bottom: 15px;
-    }
-
-    .search-box input {
-      width: 100%;
-    }
-
-    .table-container {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 800px;
-    }
-
-    th,
-    td {
-      padding: 12px;
-      border-bottom: 1px solid #e5e7eb;
-      text-align: left;
-      font-size: 14px;
-    }
-
-    th {
-      background: #f9fafb;
-      font-weight: bold;
-    }
-
-    tr:hover td {
-      background: #f9fafb;
-    }
-
-    .actions {
-      display: flex;
-      gap: 5px;
-    }
-
-    .status {
-      display: inline-block;
-      padding: 4px 9px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    .status-active {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .status-inactive {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .status-pending {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .message {
-      padding: 12px 15px;
-      border-radius: 7px;
-      margin-bottom: 15px;
-      display: none;
-    }
-
-    .message.success {
-      display: block;
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .message.error {
-      display: block;
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 30px;
-      color: #6b7280;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 30px;
-      color: #6b7280;
-    }
-
-    .record-count {
-      margin-bottom: 15px;
-      color: #6b7280;
-      font-size: 14px;
-    }
-
-    @media (max-width: 800px) {
-      body {
-        padding: 15px;
-      }
-
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .card {
-        padding: 18px;
-      }
-    }
-  </style>
+@media (max-width:720px){
+  .profile-panel{ grid-template-columns:1fr; text-align:center; }
+  .profile-actions{ flex-direction:row; justify-content:center; }
+  .stat-row{ justify-content:center; }
+  .item-form{ grid-template-columns:1fr 1fr; }
+  .item-form .field.wide{ grid-column:1/-1; }
+}
+</style>
 </head>
-
 <body>
 
-<div class="container">
+<!-- ============================================================
+     AUTH SCREEN
+============================================================ -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="brand">DOTA STASH<small>Sign in to manage your inventory</small></div>
 
-  <div class="header">
-    <h1>CRUD Spreadsheet App</h1>
-    <p>Manage records stored in Google Sheets.</p>
-  </div>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active" onclick="switchTab('login')">Login</button>
+      <button id="tabRegister" onclick="switchTab('register')">Register</button>
+    </div>
 
-  <div id="message" class="message"></div>
-
-  <!-- FORM -->
-  <div class="card">
-
-    <h2 id="formTitle">Add Record</h2>
-
-    <form id="recordForm">
-
-      <input type="hidden" id="recordId">
-
-      <div class="form-grid">
-
-        <div class="form-group">
-          <label for="name">Name</label>
-
-          <input
-            type="text"
-            id="name"
-            placeholder="Enter name"
-            required
-          >
-        </div>
-
-        <div class="form-group">
-          <label for="email">Email</label>
-
-          <input
-            type="email"
-            id="email"
-            placeholder="Enter email"
-            required
-          >
-        </div>
-
-        <div class="form-group">
-          <label for="status">Status</label>
-
-          <select id="status" required>
-
-            <option value="">
-              Select status
-            </option>
-
-            <option value="Active">
-              Active
-            </option>
-
-            <option value="Inactive">
-              Inactive
-            </option>
-
-            <option value="Pending">
-              Pending
-            </option>
-
-          </select>
-
-        </div>
-
+    <!-- LOGIN -->
+    <form id="loginForm" class="auth-form" onsubmit="return handleLogin(event)">
+      <div class="field">
+        <label>Summoner Name</label>
+        <input type="text" id="loginUsername" autocomplete="username" required>
       </div>
-
-      <div class="buttons">
-
-        <button
-          type="submit"
-          class="btn-primary"
-          id="saveButton"
-        >
-          Add Record
-        </button>
-
-        <button
-          type="button"
-          class="btn-secondary"
-          id="cancelButton"
-          onclick="resetForm()"
-          style="display:none;"
-        >
-          Cancel
-        </button>
-
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
       </div>
-
+      <button type="submit" class="btn-primary">Enter the Stash</button>
+      <div class="auth-msg" id="loginMsg"></div>
     </form>
 
+    <!-- REGISTER -->
+    <form id="registerForm" class="auth-form hidden" onsubmit="return handleRegister(event)">
+      <div class="field">
+        <label>Choose Summoner Name</label>
+        <input type="text" id="regUsername" required minlength="3">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="regPassword" required minlength="4">
+      </div>
+      <div class="field">
+        <label>Starting MMR</label>
+        <input type="number" id="regMmr" value="1000" min="0" required>
+      </div>
+      <button type="submit" class="btn-primary">Create Account</button>
+      <div class="auth-msg" id="registerMsg"></div>
+    </form>
+
+    <div class="auth-hint">Data is stored in your Firebase Realtime Database — no backend server required.</div>
   </div>
-
-
-  <!-- RECORDS -->
-  <div class="card">
-
-    <h2>Records</h2>
-
-    <div class="search-box">
-
-      <input
-        type="text"
-        id="search"
-        placeholder="Search by name, email or status..."
-        onkeyup="filterRecords()"
-      >
-
-    </div>
-
-    <div
-      class="record-count"
-      id="recordCount"
-    >
-      Loading...
-    </div>
-
-    <div class="table-container">
-
-      <table>
-
-        <thead>
-
-          <tr>
-
-            <th>Name</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>Updated</th>
-            <th>Actions</th>
-
-          </tr>
-
-        </thead>
-
-        <tbody id="recordsTable"></tbody>
-
-      </table>
-
-    </div>
-
-  </div>
-
 </div>
 
+<!-- ============================================================
+     APP SCREEN
+============================================================ -->
+<div id="appScreen" class="hidden">
+  <div class="topbar">
+    <div class="brand">DOTA STASH</div>
+    <button class="logout-btn" onclick="logout()">Log Out</button>
+  </div>
+
+  <div class="container">
+
+    <!-- PROFILE PANEL -->
+    <div class="profile-panel">
+      <div class="avatar-block">
+        <img class="avatar" id="profAvatar" src="" alt="avatar">
+        <div class="medal" id="profMedal" style="background:#555;">?</div>
+      </div>
+      <div class="profile-main">
+        <h2 id="profName">—</h2>
+        <div class="profile-tag" id="profRankLabel">—</div>
+        <div class="stat-row">
+          <div class="stat"><span class="label">MMR</span><span class="val" id="profMmr">0</span></div>
+          <div class="stat"><span class="label">Wins</span><span class="val" id="profWins">0</span></div>
+          <div class="stat"><span class="label">Losses</span><span class="val" id="profLosses">0</span></div>
+          <div class="stat"><span class="label">Member Since</span><span class="val" id="profSince">—</span></div>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <button class="btn-ghost" onclick="openProfileModal()">Edit Profile</button>
+        <button class="btn-danger" onclick="deleteAccount()">Delete Account</button>
+      </div>
+    </div>
+
+    <div class="rune-divider"><span>Item Shop</span></div>
+
+    <!-- ADD ITEM FORM -->
+    <div class="section-head">
+      <h2>Add New Item</h2>
+      <div class="sub">Create · Read · Update · Delete — synced to Firebase</div>
+    </div>
+    <form class="item-form" onsubmit="return handleAddItem(event)">
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="newItemName" required>
+      </div>
+      <div class="field">
+        <label>Price (gold)</label>
+        <input type="number" id="newItemPrice" min="0" required>
+      </div>
+      <div class="field wide">
+        <label>Image URL</label>
+        <input type="url" id="newItemImage" placeholder="https://...">
+      </div>
+      <div class="field wide">
+        <label>Description</label>
+        <input type="text" id="newItemDesc" required>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn-primary">Add Item</button>
+      </div>
+    </form>
+
+    <div class="section-head" style="margin-top:8px;">
+      <h2>Inventory (<span id="itemCount">0</span>)</h2>
+      <div class="sub" id="itemsStatus">Loading…</div>
+    </div>
+    <div class="item-grid" id="itemGrid"></div>
+    <div id="itemsEmpty" class="empty-note hidden">No items yet. Add one above.</div>
+  </div>
+</div>
+
+<!-- EDIT ITEM MODAL -->
+<div id="editItemModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3>Edit Item</h3>
+    <input type="hidden" id="editItemId">
+    <div class="field"><label>Name</label><input type="text" id="editItemName"></div>
+    <div class="field"><label>Price (gold)</label><input type="number" id="editItemPrice" min="0"></div>
+    <div class="field"><label>Image URL</label><input type="url" id="editItemImage"></div>
+    <div class="field"><label>Description</label><input type="text" id="editItemDesc"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('editItemModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveEditItem()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div id="editProfileModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3>Edit Profile</h3>
+    <div class="field"><label>MMR</label><input type="number" id="editMmr" min="0"></div>
+    <div class="field">
+      <label>Rank</label>
+      <select id="editRank">
+        <option>Herald</option><option>Guardian</option><option>Crusader</option>
+        <option>Archon</option><option>Legend</option><option>Ancient</option>
+        <option>Divine</option><option>Immortal</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Medal Star (1-5, ignored for Immortal)</label>
+      <input type="number" id="editStar" min="1" max="5" value="1">
+    </div>
+    <div class="field"><label>Wins</label><input type="number" id="editWins" min="0"></div>
+    <div class="field"><label>Losses</label><input type="number" id="editLosses" min="0"></div>
+    <div class="field"><label>Avatar URL</label><input type="url" id="editAvatar"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('editProfileModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveEditProfile()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
+/* ============================================================
+   FIREBASE REALTIME DATABASE — REST helpers
+   (no SDK / API key required for a DB with open test-mode rules)
+============================================================ */
+const DB_URL = "https://dota-7c648-default-rtdb.firebaseio.com";
 
-/* ============================================
-   APPS SCRIPT WEB APP URL
-============================================ */
-
-const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbwUqbN2PLuw3x5-tfj2NHuDM6YgvNYutMhAf1qwKNuJ-WRJWh3k3WZlL0Ia8p_4e6dgag/exec";
-
-
-let records = [];
-
-let editing = false;
-
-
-/* ============================================
-   API REQUEST
-============================================ */
-
-async function apiRequest(action, data = {}) {
-
-  const response =
-    await fetch(WEB_APP_URL, {
-
-      method: "POST",
-
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-
-      body: JSON.stringify({
-
-        action: action,
-
-        data: data
-
-      })
-
-    });
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      "Unable to connect to Apps Script."
-    );
-
-  }
-
-
-  const result =
-    await response.json();
-
-
-  if (!result.success) {
-
-    throw new Error(
-      result.message ||
-      "Apps Script returned an error."
-    );
-
-  }
-
-
-  return result;
-
+async function dbGet(path){
+  const res = await fetch(`${DB_URL}/${path}.json`);
+  if(!res.ok) throw new Error("Database read failed");
+  return res.json();
 }
-
-
-/* ============================================
-   LOAD RECORDS
-============================================ */
-
-async function loadRecords() {
-
-  document.getElementById(
-    'recordCount'
-  ).textContent = 'Loading...';
-
-
-  try {
-
-    const result =
-      await apiRequest("read");
-
-
-    records =
-      result.data || [];
-
-
-    renderRecords(records);
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-
-    showMessage(
-
-      error.message ||
-      'Failed to load records.',
-
-      'error'
-
-    );
-
-  }
-
-}
-
-
-/* ============================================
-   DISPLAY RECORDS
-============================================ */
-
-function renderRecords(data) {
-
-  const table =
-    document.getElementById(
-      'recordsTable'
-    );
-
-
-  table.innerHTML = '';
-
-
-  document.getElementById(
-    'recordCount'
-  ).textContent =
-    data.length +
-    ' record(s)';
-
-
-  if (data.length === 0) {
-
-    table.innerHTML = `
-
-      <tr>
-
-        <td
-          colspan="6"
-          class="empty"
-        >
-          No records found.
-        </td>
-
-      </tr>
-
-    `;
-
-    return;
-
-  }
-
-
-  data.forEach(function(record) {
-
-    const row =
-      document.createElement('tr');
-
-
-    const statusClass =
-      getStatusClass(
-        record.status
-      );
-
-
-    row.innerHTML = `
-
-      <td>
-        ${escapeHtml(record.name)}
-      </td>
-
-      <td>
-        ${escapeHtml(record.email)}
-      </td>
-
-      <td>
-
-        <span
-          class="status ${statusClass}"
-        >
-          ${escapeHtml(record.status)}
-        </span>
-
-      </td>
-
-      <td>
-        ${escapeHtml(record.createdAt)}
-      </td>
-
-      <td>
-        ${escapeHtml(record.updatedAt)}
-      </td>
-
-      <td>
-
-        <div class="actions">
-
-          <button
-            class="btn-edit"
-            onclick="editRecord('${escapeJs(record.id)}')"
-          >
-            Edit
-          </button>
-
-          <button
-            class="btn-delete"
-            onclick="deleteRecord('${escapeJs(record.id)}')"
-          >
-            Delete
-          </button>
-
-        </div>
-
-      </td>
-
-    `;
-
-
-    table.appendChild(row);
-
+async function dbSet(path, data){
+  const res = await fetch(`${DB_URL}/${path}.json`, {
+    method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)
   });
-
+  if(!res.ok) throw new Error("Database write failed");
+  return res.json();
+}
+async function dbPatch(path, data){
+  const res = await fetch(`${DB_URL}/${path}.json`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)
+  });
+  if(!res.ok) throw new Error("Database update failed");
+  return res.json();
+}
+async function dbPush(path, data){
+  const res = await fetch(`${DB_URL}/${path}.json`, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)
+  });
+  if(!res.ok) throw new Error("Database push failed");
+  return res.json(); // { name: "-Nxxxx" }
+}
+async function dbDelete(path){
+  const res = await fetch(`${DB_URL}/${path}.json`, { method:"DELETE" });
+  if(!res.ok) throw new Error("Database delete failed");
+  return res.json();
 }
 
+/* ============================================================
+   STATE
+============================================================ */
+let currentUser = null;   // sanitized username / key
+let currentUserData = null;
+let itemsCache = {};
 
-/* ============================================
-   CREATE / UPDATE
-============================================ */
+function sanitizeKey(str){
+  return str.trim().toLowerCase().replace(/[.#$\[\]\/\s]+/g, "_");
+}
 
-document
-  .getElementById('recordForm')
-  .addEventListener(
-    'submit',
-    async function(event) {
+/* ============================================================
+   SEED ITEMS — 20 classic Dota 2 items
+============================================================ */
+const SEED_ITEMS = [
+  { name:"Blink Dagger", price:2250, desc:"Teleport a short distance almost instantly.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/blink.png" },
+  { name:"Black King Bar", price:4050, desc:"Grants magic immunity for a limited duration.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/black_king_bar.png" },
+  { name:"Aegis of the Immortal", price:0, desc:"Dropped by Roshan. Revives the holder upon death.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/aegis.png" },
+  { name:"Power Treads", price:1400, desc:"Boots that grant an attribute bonus and attack speed.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/power_treads.png" },
+  { name:"Phase Boots", price:1500, desc:"Boots granting bonus speed and the ability to phase through units.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/phase_boots.png" },
+  { name:"Arcane Boots", price:1300, desc:"Restores mana to the wearer and nearby allies on use.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/arcane_boots.png" },
+  { name:"Mask of Madness", price:1650, desc:"Grants bonus attack speed and lifesteal, but silences the wearer.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/mask_of_madness.png" },
+  { name:"Battle Fury", price:4100, desc:"Grants cleave damage, mana regeneration, and health regen.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/battle_fury.png" },
+  { name:"Manta Style", price:4600, desc:"Creates two illusions of the caster and removes negative effects.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/manta.png" },
+  { name:"Satanic", price:5150, desc:"Grants lifesteal, and an active for massive life steal on hit.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/satanic.png" },
+  { name:"Butterfly", price:4975, desc:"Grants high evasion, agility, and attack speed.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/butterfly.png" },
+  { name:"Monkey King Bar", price:4975, desc:"Grants true strike, bonus damage, and attack speed.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/monkey_king_bar.png" },
+  { name:"Daedalus", price:5150, desc:"Grants a high chance to land critical strikes.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/daedalus.png" },
+  { name:"Divine Rapier", price:5900, desc:"Massive damage boost. Drops on the ground when the carrier dies.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/rapier.png" },
+  { name:"Heart of Tarrasque", price:5150, desc:"Grants a huge bonus to health and health regeneration.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/heart.png" },
+  { name:"Shiva's Guard", price:4700, desc:"Grants armor and intelligence, with an AoE slowing nova.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/shivas_guard.png" },
+  { name:"Assault Cuirass", price:4900, desc:"Grants an armor and attack speed aura for allies.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/assault.png" },
+  { name:"Radiance", price:5150, desc:"Burns nearby enemies and causes a chance to miss attacks.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/radiance.png" },
+  { name:"Sange and Yasha", price:4500, desc:"A blend of strength and agility bonuses with a slow on hit.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/sange_and_yasha.png" },
+  { name:"Eye of Skadi", price:5350, desc:"Grants huge stats and applies a slow debuff on attack.", img:"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/skadi.png" }
+];
 
-      event.preventDefault();
+const MEDAL_COLORS = {
+  Herald:"#8a8a8a", Guardian:"#4f7942", Crusader:"#3f8fa3", Archon:"#8a5fc9",
+  Legend:"#4463c9", Ancient:"#c94f8a", Divine:"#c9a227", Immortal:"#d1442f"
+};
 
+/* ============================================================
+   AUTH SCREEN LOGIC
+============================================================ */
+function switchTab(which){
+  document.getElementById('tabLogin').classList.toggle('active', which==='login');
+  document.getElementById('tabRegister').classList.toggle('active', which==='register');
+  document.getElementById('loginForm').classList.toggle('hidden', which!=='login');
+  document.getElementById('registerForm').classList.toggle('hidden', which!=='register');
+}
 
-      const id =
-        document.getElementById(
-          'recordId'
-        ).value;
+function setMsg(id, text, type){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'auth-msg ' + (type||'');
+}
 
-
-      const data = {
-
-        id: id,
-
-        name:
-          document.getElementById(
-            'name'
-          ).value.trim(),
-
-        email:
-          document.getElementById(
-            'email'
-          ).value.trim(),
-
-        status:
-          document.getElementById(
-            'status'
-          ).value
-
-      };
-
-
-      if (
-        !data.name ||
-        !data.email ||
-        !data.status
-      ) {
-
-        showMessage(
-          'Please complete all fields.',
-          'error'
-        );
-
-        return;
-
-      }
-
-
-      setLoading(true);
-
-
-      try {
-
-        let result;
-
-
-        if (editing) {
-
-          result =
-            await apiRequest(
-              "update",
-              data
-            );
-
-        } else {
-
-          result =
-            await apiRequest(
-              "create",
-              data
-            );
-
-        }
-
-
-        showMessage(
-          result.message ||
-          'Operation completed.',
-          'success'
-        );
-
-
-        resetForm();
-
-
-        await loadRecords();
-
-
-      }
-
-      catch (error) {
-
-        console.error(error);
-
-
-        showMessage(
-          error.message ||
-          'Operation failed.',
-          'error'
-        );
-
-      }
-
-      finally {
-
-        setLoading(false);
-
-      }
-
+async function handleRegister(e){
+  e.preventDefault();
+  const uname = document.getElementById('regUsername').value;
+  const pass = document.getElementById('regPassword').value;
+  const mmr = parseInt(document.getElementById('regMmr').value || "1000", 10);
+  const key = sanitizeKey(uname);
+  setMsg('registerMsg', 'Creating account…');
+  try{
+    const existing = await dbGet(`users/${key}`);
+    if(existing){
+      setMsg('registerMsg', 'That summoner name is already taken.', 'err');
+      return false;
     }
-  );
-
-
-/* ============================================
-   EDIT RECORD
-============================================ */
-
-function editRecord(id) {
-
-  const record =
-    records.find(
-      function(item) {
-
-        return String(item.id) ===
-          String(id);
-
-      }
-    );
-
-
-  if (!record) {
-
-    showMessage(
-      'Record not found.',
-      'error'
-    );
-
-    return;
-
+    const userData = {
+      username: uname,
+      password: pass,
+      mmr: mmr,
+      rank: "Herald",
+      star: 1,
+      wins: 0,
+      losses: 0,
+      avatar: "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/icons/antimage.png",
+      createdAt: new Date().toISOString().slice(0,10)
+    };
+    await dbSet(`users/${key}`, userData);
+    setMsg('registerMsg', 'Account created! Switching to login…', 'ok');
+    setTimeout(()=>{ switchTab('login'); document.getElementById('loginUsername').value = uname; setMsg('registerMsg',''); }, 900);
+  }catch(err){
+    setMsg('registerMsg', 'Error: ' + err.message, 'err');
   }
+  return false;
+}
 
+async function handleLogin(e){
+  e.preventDefault();
+  const uname = document.getElementById('loginUsername').value;
+  const pass = document.getElementById('loginPassword').value;
+  const key = sanitizeKey(uname);
+  setMsg('loginMsg', 'Checking credentials…');
+  try{
+    const user = await dbGet(`users/${key}`);
+    if(!user){
+      setMsg('loginMsg', 'No summoner with that name found.', 'err');
+      return false;
+    }
+    if(user.password !== pass){
+      setMsg('loginMsg', 'Incorrect password.', 'err');
+      return false;
+    }
+    currentUser = key;
+    currentUserData = user;
+    setMsg('loginMsg', '');
+    enterApp();
+  }catch(err){
+    setMsg('loginMsg', 'Error: ' + err.message, 'err');
+  }
+  return false;
+}
 
-  editing = true;
+function logout(){
+  currentUser = null;
+  currentUserData = null;
+  document.getElementById('appScreen').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('loginForm').reset();
+  document.getElementById('registerForm').reset();
+}
 
+/* ============================================================
+   APP SCREEN
+============================================================ */
+async function enterApp(){
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  renderProfile();
+  await loadItems();
+}
 
-  document.getElementById(
-    'formTitle'
-  ).textContent =
-    'Edit Record';
+function renderProfile(){
+  const u = currentUserData;
+  document.getElementById('profName').textContent = u.username;
+  document.getElementById('profAvatar').src = u.avatar || '';
+  document.getElementById('profRankLabel').textContent = u.rank === 'Immortal' ? 'Immortal' : `${u.rank} ${u.star || 1}`;
+  document.getElementById('profMmr').textContent = u.mmr;
+  document.getElementById('profWins').textContent = u.wins || 0;
+  document.getElementById('profLosses').textContent = u.losses || 0;
+  document.getElementById('profSince').textContent = u.createdAt || '—';
+  const medal = document.getElementById('profMedal');
+  medal.style.background = MEDAL_COLORS[u.rank] || '#555';
+  medal.textContent = (u.rank || '?').slice(0,2).toUpperCase();
+}
 
+/* ---------- ITEMS: READ ---------- */
+async function loadItems(){
+  const statusEl = document.getElementById('itemsStatus');
+  statusEl.textContent = 'Loading…';
+  try{
+    let items = await dbGet('items');
+    if(!items){
+      statusEl.textContent = 'Seeding starter items…';
+      const seedObj = {};
+      SEED_ITEMS.forEach((it, i)=>{ seedObj['seed_'+i] = it; });
+      await dbSet('items', seedObj);
+      items = seedObj;
+    }
+    itemsCache = items;
+    renderItems();
+    statusEl.textContent = 'Synced with Firebase';
+  }catch(err){
+    statusEl.textContent = 'Failed to load: ' + err.message;
+    showToast('Could not reach Firebase database', true);
+  }
+}
 
-  document.getElementById(
-    'saveButton'
-  ).textContent =
-    'Update Record';
-
-
-  document.getElementById(
-    'cancelButton'
-  ).style.display =
-    'inline-block';
-
-
-  document.getElementById(
-    'recordId'
-  ).value =
-    record.id;
-
-
-  document.getElementById(
-    'name'
-  ).value =
-    record.name;
-
-
-  document.getElementById(
-    'email'
-  ).value =
-    record.email;
-
-
-  document.getElementById(
-    'status'
-  ).value =
-    record.status;
-
-
-  window.scrollTo({
-
-    top: 0,
-
-    behavior: 'smooth'
-
+function renderItems(){
+  const grid = document.getElementById('itemGrid');
+  const emptyNote = document.getElementById('itemsEmpty');
+  grid.innerHTML = '';
+  const keys = Object.keys(itemsCache || {});
+  document.getElementById('itemCount').textContent = keys.length;
+  if(keys.length === 0){
+    emptyNote.classList.remove('hidden');
+    return;
+  }
+  emptyNote.classList.add('hidden');
+  keys.forEach(id=>{
+    const it = itemsCache[id];
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML = `
+      <div class="price-tag">${Number(it.price).toLocaleString()}g</div>
+      <div class="item-img-wrap"><img src="${it.img || ''}" alt="${it.name}" onerror="this.style.opacity=0.15"></div>
+      <h3>${it.name}</h3>
+      <p>${it.desc}</p>
+      <div class="card-actions">
+        <button onclick="openEditItem('${id}')">Edit</button>
+        <button class="del" onclick="deleteItemConfirm('${id}')">Delete</button>
+      </div>
+    `;
+    grid.appendChild(card);
   });
-
 }
 
-
-/* ============================================
-   DELETE RECORD
-============================================ */
-
-async function deleteRecord(id) {
-
-  const record =
-    records.find(
-      function(item) {
-
-        return String(item.id) ===
-          String(id);
-
-      }
-    );
-
-
-  if (!record) {
-
-    showMessage(
-      'Record not found.',
-      'error'
-    );
-
-    return;
-
+/* ---------- ITEMS: CREATE ---------- */
+async function handleAddItem(e){
+  e.preventDefault();
+  const name = document.getElementById('newItemName').value.trim();
+  const price = parseInt(document.getElementById('newItemPrice').value, 10);
+  const img = document.getElementById('newItemImage').value.trim();
+  const desc = document.getElementById('newItemDesc').value.trim();
+  if(!name || !desc || isNaN(price)) return false;
+  try{
+    const res = await dbPush('items', { name, price, img, desc });
+    itemsCache[res.name] = { name, price, img, desc };
+    renderItems();
+    e.target.reset();
+    showToast('Item added to the stash');
+  }catch(err){
+    showToast('Failed to add item: ' + err.message, true);
   }
-
-
-  const confirmed =
-    confirm(
-
-      'Are you sure you want to delete "' +
-      record.name +
-      '"?'
-
-    );
-
-
-  if (!confirmed) {
-
-    return;
-
-  }
-
-
-  setLoading(true);
-
-
-  try {
-
-    const result =
-      await apiRequest(
-        "delete",
-        {
-          id: id
-        }
-      );
-
-
-    showMessage(
-      result.message ||
-      'Record deleted successfully.',
-      'success'
-    );
-
-
-    await loadRecords();
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-
-    showMessage(
-      error.message ||
-      'Failed to delete record.',
-      'error'
-    );
-
-  }
-
-  finally {
-
-    setLoading(false);
-
-  }
-
+  return false;
 }
 
-
-/* ============================================
-   RESET FORM
-============================================ */
-
-function resetForm() {
-
-  editing = false;
-
-
-  document
-    .getElementById(
-      'recordForm'
-    )
-    .reset();
-
-
-  document.getElementById(
-    'recordId'
-  ).value = '';
-
-
-  document.getElementById(
-    'formTitle'
-  ).textContent =
-    'Add Record';
-
-
-  document.getElementById(
-    'saveButton'
-  ).textContent =
-    'Add Record';
-
-
-  document.getElementById(
-    'cancelButton'
-  ).style.display =
-    'none';
-
+/* ---------- ITEMS: UPDATE ---------- */
+function openEditItem(id){
+  const it = itemsCache[id];
+  document.getElementById('editItemId').value = id;
+  document.getElementById('editItemName').value = it.name;
+  document.getElementById('editItemPrice').value = it.price;
+  document.getElementById('editItemImage').value = it.img || '';
+  document.getElementById('editItemDesc').value = it.desc;
+  document.getElementById('editItemModal').classList.remove('hidden');
 }
 
-
-/* ============================================
-   SEARCH / FILTER
-============================================ */
-
-function filterRecords() {
-
-  const search =
-    document
-      .getElementById(
-        'search'
-      )
-      .value
-      .toLowerCase()
-      .trim();
-
-
-  if (!search) {
-
-    renderRecords(records);
-
-    return;
-
-  }
-
-
-  const filtered =
-    records.filter(
-      function(record) {
-
-        return (
-
-          String(record.name)
-            .toLowerCase()
-            .includes(search)
-
-          ||
-
-          String(record.email)
-            .toLowerCase()
-            .includes(search)
-
-          ||
-
-          String(record.status)
-            .toLowerCase()
-            .includes(search)
-
-        );
-
-      }
-    );
-
-
-  renderRecords(filtered);
-
-}
-
-
-/* ============================================
-   STATUS CLASS
-============================================ */
-
-function getStatusClass(status) {
-
-  switch (
-    String(status).toLowerCase()
-  ) {
-
-    case 'active':
-
-      return 'status-active';
-
-
-    case 'inactive':
-
-      return 'status-inactive';
-
-
-    case 'pending':
-
-      return 'status-pending';
-
-
-    default:
-
-      return '';
-
-  }
-
-}
-
-
-/* ============================================
-   MESSAGE
-============================================ */
-
-function showMessage(
-  message,
-  type
-) {
-
-  const element =
-    document.getElementById(
-      'message'
-    );
-
-
-  element.textContent =
-    message;
-
-
-  element.className =
-    'message ' + type;
-
-
-  setTimeout(
-    function() {
-
-      element.className =
-        'message';
-
-    },
-    4000
-  );
-
-}
-
-
-/* ============================================
-   LOADING
-============================================ */
-
-function setLoading(
-  isLoading
-) {
-
-  const button =
-    document.getElementById(
-      'saveButton'
-    );
-
-
-  if (isLoading) {
-
-    button.disabled = true;
-
-    button.textContent =
-      'Saving...';
-
-  } else {
-
-    button.disabled = false;
-
-    button.textContent =
-      editing
-        ? 'Update Record'
-        : 'Add Record';
-
-  }
-
-}
-
-
-/* ============================================
-   HTML ESCAPE
-============================================ */
-
-function escapeHtml(value) {
-
-  return String(value ?? '')
-
-    .replace(
-      /&/g,
-      '&amp;'
-    )
-
-    .replace(
-      /</g,
-      '&lt;'
-    )
-
-    .replace(
-      />/g,
-      '&gt;'
-    )
-
-    .replace(
-      /"/g,
-      '&quot;'
-    )
-
-    .replace(
-      /'/g,
-      '&#039;'
-    );
-
-}
-
-
-/* ============================================
-   JAVASCRIPT ESCAPE
-============================================ */
-
-function escapeJs(value) {
-
-  return String(value ?? '')
-
-    .replace(
-      /\\/g,
-      '\\\\'
-    )
-
-    .replace(
-      /'/g,
-      "\\'"
-    );
-
-}
-
-
-/* ============================================
-   INITIAL LOAD
-============================================ */
-
-window.onload =
-  function() {
-
-    loadRecords();
-
+async function saveEditItem(){
+  const id = document.getElementById('editItemId').value;
+  const updated = {
+    name: document.getElementById('editItemName').value.trim(),
+    price: parseInt(document.getElementById('editItemPrice').value, 10),
+    img: document.getElementById('editItemImage').value.trim(),
+    desc: document.getElementById('editItemDesc').value.trim()
   };
+  try{
+    await dbSet(`items/${id}`, updated);
+    itemsCache[id] = updated;
+    renderItems();
+    closeModal('editItemModal');
+    showToast('Item updated');
+  }catch(err){
+    showToast('Failed to update item: ' + err.message, true);
+  }
+}
 
+/* ---------- ITEMS: DELETE ---------- */
+async function deleteItemConfirm(id){
+  const it = itemsCache[id];
+  if(!confirm(`Delete "${it.name}" from the stash?`)) return;
+  try{
+    await dbDelete(`items/${id}`);
+    delete itemsCache[id];
+    renderItems();
+    showToast('Item deleted');
+  }catch(err){
+    showToast('Failed to delete item: ' + err.message, true);
+  }
+}
+
+/* ---------- PROFILE: UPDATE ---------- */
+function openProfileModal(){
+  const u = currentUserData;
+  document.getElementById('editMmr').value = u.mmr;
+  document.getElementById('editRank').value = u.rank;
+  document.getElementById('editStar').value = u.star || 1;
+  document.getElementById('editWins').value = u.wins || 0;
+  document.getElementById('editLosses').value = u.losses || 0;
+  document.getElementById('editAvatar').value = u.avatar || '';
+  document.getElementById('editProfileModal').classList.remove('hidden');
+}
+
+async function saveEditProfile(){
+  const updated = {
+    mmr: parseInt(document.getElementById('editMmr').value, 10),
+    rank: document.getElementById('editRank').value,
+    star: parseInt(document.getElementById('editStar').value, 10),
+    wins: parseInt(document.getElementById('editWins').value, 10),
+    losses: parseInt(document.getElementById('editLosses').value, 10),
+    avatar: document.getElementById('editAvatar').value.trim()
+  };
+  try{
+    await dbPatch(`users/${currentUser}`, updated);
+    currentUserData = { ...currentUserData, ...updated };
+    renderProfile();
+    closeModal('editProfileModal');
+    showToast('Profile updated');
+  }catch(err){
+    showToast('Failed to update profile: ' + err.message, true);
+  }
+}
+
+/* ---------- PROFILE: DELETE ---------- */
+async function deleteAccount(){
+  if(!confirm('This will permanently delete your account. Continue?')) return;
+  try{
+    await dbDelete(`users/${currentUser}`);
+    showToast('Account deleted');
+    setTimeout(logout, 700);
+  }catch(err){
+    showToast('Failed to delete account: ' + err.message, true);
+  }
+}
+
+/* ---------- misc ---------- */
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+let toastTimer;
+function showToast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2800);
+}
 </script>
-
 </body>
 </html>
