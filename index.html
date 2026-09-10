@@ -194,8 +194,9 @@ input,select{font-family:inherit;}
   font-family:var(--font-display);font-size:44px;font-weight:900;color:rgba(255,255,255,0.9);
   overflow:hidden;
 }
-.skin-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(10,9,8,0.85));}
-.skin-art span{position:relative;z-index:1;text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+.skin-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(10,9,8,0.85));z-index:1;}
+.skin-art span{position:relative;z-index:0;text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+.skin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 .rarity-tag{
   position:absolute;top:10px;left:10px;z-index:2;font-size:10px;letter-spacing:1.5px;font-weight:700;
   padding:3px 9px;border-radius:2px;text-transform:uppercase;
@@ -445,13 +446,20 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
                 </select>
               </div>
               <div class="field-inline">
-                <label>Price (USD)</label>
-                <input type="number" id="skinPrice" min="0" step="0.01" placeholder="29.99" required>
+                <label>Price (₱ PHP)</label>
+                <input type="number" id="skinPrice" min="0" step="0.01" placeholder="1499.00" required>
               </div>
             </div>
             <div class="field-inline">
               <label>Stock Quantity</label>
               <input type="number" id="skinStock" min="0" step="1" placeholder="10" required>
+            </div>
+            <div class="field-inline">
+              <label>Image URL (optional)</label>
+              <input type="url" id="skinImage" placeholder="https://example.com/skin-image.jpg">
+            </div>
+            <div id="imgPreviewHint" style="display:none;margin-bottom:14px;">
+              <img id="imgPreview" src="" alt="preview" style="width:100%;max-height:140px;object-fit:cover;border:1px solid var(--line);border-radius:2px;">
             </div>
             <div class="btn-row">
               <button type="submit" class="btn-sm primary" id="skinSubmitBtn">Save Skin</button>
@@ -557,6 +565,10 @@ async function dbDelete(path){
   return res.json();
 }
 
+/* currency formatter — Philippine Peso */
+const PHP_FMT = new Intl.NumberFormat('en-PH', { style:'currency', currency:'PHP', minimumFractionDigits:2 });
+function money(n){ return PHP_FMT.format(Number(n)||0); }
+
 /* naive obfuscation — NOT real security, demo only */
 function encode(str){ return btoa(unescape(encodeURIComponent(str))); }
 function decode(str){ try{ return decodeURIComponent(escape(atob(str))); }catch(e){ return ''; } }
@@ -592,20 +604,20 @@ function heroTheme(hero){
    SAMPLE / SEED DATA
 ========================================================= */
 const SEED_SKINS = [
-  { hero:"Windranger",     name:"Sonic Scourge",           type:"Arcana",   price:34.99, stock:5,  sold:12 },
-  { hero:"Shadow Fiend",    name:"Demon Eater's Wrath",     type:"Immortal", price:24.99, stock:0,  sold:30 },
-  { hero:"Earthshaker",     name:"Stonehall Warbringer",    type:"Immortal", price:19.99, stock:8,  sold:14 },
-  { hero:"Spectre",         name:"Bloodmoon Reaper",        type:"Arcana",   price:39.99, stock:3,  sold:21 },
-  { hero:"Faceless Void",    name:"Continuum Anomaly",       type:"Immortal", price:22.99, stock:0,  sold:18 },
-  { hero:"Wraith King",     name:"Skeleton Overlord's Crown",type:"Immortal", price:17.99, stock:12, sold:9 },
-  { hero:"Drow Ranger",     name:"Frostbound Huntress",     type:"Immortal", price:21.99, stock:6,  sold:11 },
+  { hero:"Windranger",     name:"Sonic Scourge",           type:"Arcana",   price:1899, stock:5,  sold:12, image:"" },
+  { hero:"Shadow Fiend",    name:"Demon Eater's Wrath",     type:"Immortal", price:1299, stock:0,  sold:30, image:"" },
+  { hero:"Earthshaker",     name:"Stonehall Warbringer",    type:"Immortal", price:999,  stock:8,  sold:14, image:"" },
+  { hero:"Spectre",         name:"Bloodmoon Reaper",        type:"Arcana",   price:2199, stock:3,  sold:21, image:"" },
+  { hero:"Faceless Void",    name:"Continuum Anomaly",       type:"Immortal", price:1199, stock:0,  sold:18, image:"" },
+  { hero:"Wraith King",     name:"Skeleton Overlord's Crown",type:"Immortal", price:899,  stock:12, sold:9,  image:"" },
+  { hero:"Drow Ranger",     name:"Frostbound Huntress",     type:"Immortal", price:1099, stock:6,  sold:11, image:"" },
 ];
 const SEED_SALES = [
-  { buyer:"ShadowHunter99",   skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:34.99, date:"2026-08-02" },
-  { buyer:"PudgeMain2024",    skin:"Bloodmoon Reaper", hero:"Spectre",    type:"Arcana", amount:39.99, date:"2026-08-05" },
-  { buyer:"ArcanaCollectorPH",skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:34.99, date:"2026-08-11" },
-  { buyer:"IloiloGamerX",     skin:"Bloodmoon Reaper", hero:"Spectre",    type:"Arcana", amount:39.99, date:"2026-08-19" },
-  { buyer:"NightStalkerFan",  skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:34.99, date:"2026-08-27" },
+  { buyer:"ShadowHunter99",   skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:1899, date:"2026-08-02" },
+  { buyer:"PudgeMain2024",    skin:"Bloodmoon Reaper", hero:"Spectre",    type:"Arcana", amount:2199, date:"2026-08-05" },
+  { buyer:"ArcanaCollectorPH",skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:1899, date:"2026-08-11" },
+  { buyer:"IloiloGamerX",     skin:"Bloodmoon Reaper", hero:"Spectre",    type:"Arcana", amount:2199, date:"2026-08-19" },
+  { buyer:"NightStalkerFan",  skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:1899, date:"2026-08-27" },
 ];
 
 /* =========================================================
@@ -841,7 +853,7 @@ function renderDashboard(){
     <div class="stat-card"><div class="label">UNITS IN STOCK</div><div class="value accent-ok">${totalStock}</div></div>
     <div class="stat-card"><div class="label">SOLD OUT ITEMS</div><div class="value accent-blood">${soldOut}</div></div>
     <div class="stat-card"><div class="label">TOTAL UNITS SOLD</div><div class="value accent-gold">${totalSold}</div></div>
-    <div class="stat-card"><div class="label">BUYER REVENUE</div><div class="value accent-gold">$${revenue.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="label">BUYER REVENUE</div><div class="value accent-gold">${money(revenue)}</div></div>
   `;
 
   const salesArr = Object.entries(SALES).sort((a,b)=> (b[1].date||'').localeCompare(a[1].date||'')).slice(0,6);
@@ -853,7 +865,7 @@ function renderDashboard(){
           <tr>
             <td>${s.buyer}</td><td>${s.skin}</td><td>${s.hero}</td>
             <td><span class="pill ${s.type.toLowerCase()}">${s.type}</span></td>
-            <td>$${Number(s.amount).toFixed(2)}</td><td>${s.date}</td>
+            <td>${money(s.amount)}</td><td>${s.date}</td>
           </tr>`).join('')}
       </tbody>
     </table>` : `<div class="empty-state"><div class="ico">◆</div>No buyer activity yet.</div>`;
@@ -880,13 +892,13 @@ function renderSkinGrid(type, gridId, countId){
       <div class="skin-art" style="background:${theme.grad};">
         <span class="rarity-tag ${s.type.toLowerCase()}">${s.type}</span>
         ${soldOut ? `<span class="soldout-badge">SOLD OUT</span>` : ''}
-        <span>${theme.initial}</span>
+        ${s.image ? `<img src="${s.image}" alt="${s.name}" onerror="this.style.display='none'">` : `<span>${theme.initial}</span>`}
       </div>
       <div class="skin-body">
         <div class="skin-hero">${s.hero.toUpperCase()}</div>
         <div class="skin-name">${s.name}</div>
         <div class="skin-meta">
-          <span class="skin-price">$${Number(s.price).toFixed(2)}</span>
+          <span class="skin-price">${money(s.price)}</span>
           <span class="skin-stock ${stockClass}">${soldOut?'0 left':(stock+' left')}</span>
         </div>
         <div class="skin-actions">
@@ -913,7 +925,7 @@ function renderInventory(){
         ${entries.map(([id,s])=>{
           const stock = Number(s.stock||0);
           const status = stock===0 ? '<span class="pill immortal">SOLD OUT</span>' : (stock<=3 ? '<span class="pill arcana">LOW STOCK</span>' : '<span class="pill" style="background:rgba(74,138,90,0.15);color:#4a8a5a;">IN STOCK</span>');
-          return `<tr><td>${s.hero}</td><td>${s.name}</td><td><span class="pill ${s.type.toLowerCase()}">${s.type}</span></td><td>$${Number(s.price).toFixed(2)}</td><td>${stock}</td><td>${s.sold||0}</td><td>${status}</td></tr>`;
+          return `<tr><td>${s.hero}</td><td>${s.name}</td><td><span class="pill ${s.type.toLowerCase()}">${s.type}</span></td><td>${money(s.price)}</td><td>${stock}</td><td>${s.sold||0}</td><td>${status}</td></tr>`;
         }).join('')}
       </tbody>
     </table>`;
@@ -935,7 +947,7 @@ function renderSales(){
           <tr>
             <td>${s.buyer}</td><td>${s.skin}</td><td>${s.hero}</td>
             <td><span class="pill ${s.type.toLowerCase()}">${s.type}</span></td>
-            <td>$${Number(s.amount).toFixed(2)}</td><td>${s.date}</td>
+            <td>${money(s.amount)}</td><td>${s.date}</td>
           </tr>`).join('')}
       </tbody>
     </table>`;
@@ -953,8 +965,24 @@ function resetSkinForm(){
   document.getElementById('formTitle').textContent = 'Add New Skin';
   document.getElementById('skinSubmitBtn').textContent = 'Save Skin';
   skinCancelBtn.style.display='none';
+  document.getElementById('imgPreviewHint').style.display='none';
 }
 skinCancelBtn.onclick = resetSkinForm;
+
+/* live image preview as the URL is typed/pasted */
+const skinImageInput = document.getElementById('skinImage');
+const imgPreviewHint = document.getElementById('imgPreviewHint');
+const imgPreview = document.getElementById('imgPreview');
+skinImageInput.addEventListener('input', ()=>{
+  const url = skinImageInput.value.trim();
+  if(url){
+    imgPreview.src = url;
+    imgPreviewHint.style.display='block';
+  } else {
+    imgPreviewHint.style.display='none';
+  }
+});
+imgPreview.addEventListener('error', ()=>{ imgPreviewHint.style.display='none'; });
 
 window.editSkin = function(id){
   const s = SKINS[id];
@@ -965,6 +993,8 @@ window.editSkin = function(id){
   document.getElementById('skinType').value = s.type;
   document.getElementById('skinPrice').value = s.price;
   document.getElementById('skinStock').value = s.stock;
+  document.getElementById('skinImage').value = s.image || '';
+  if(s.image){ imgPreview.src = s.image; imgPreviewHint.style.display='block'; } else { imgPreviewHint.style.display='none'; }
   document.getElementById('formTitle').textContent = 'Edit Skin';
   document.getElementById('skinSubmitBtn').textContent = 'Update Skin';
   skinCancelBtn.style.display='inline-flex';
@@ -986,6 +1016,7 @@ skinForm.addEventListener('submit', async (e)=>{
     type: document.getElementById('skinType').value,
     price: parseFloat(document.getElementById('skinPrice').value),
     stock: parseInt(document.getElementById('skinStock').value,10),
+    image: document.getElementById('skinImage').value.trim(),
     sold: id && SKINS[id] ? (SKINS[id].sold||0) : 0,
   };
   try{
