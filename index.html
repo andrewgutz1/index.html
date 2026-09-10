@@ -275,6 +275,36 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
 .rules-note{background:rgba(217,122,41,0.08);border:1px solid rgba(217,122,41,0.3);padding:10px 14px;font-size:12px;color:var(--arcana);margin-bottom:18px;border-radius:2px;line-height:1.5;display:none;}
 .rules-note.show{display:block;}
 
+/* animation showcase */
+.skin-preview-row{margin-bottom:8px;}
+.act-preview{
+  width:100%;padding:9px 0;font-size:11.5px;font-weight:700;letter-spacing:.6px;
+  border:1px solid var(--gold-soft);color:var(--gold);border-radius:2px;background:rgba(201,151,44,0.07);
+  transition:background .15s, transform .1s;
+}
+.act-preview:hover{background:rgba(201,151,44,0.16);}
+.act-preview:disabled{opacity:.35;cursor:not-allowed;color:var(--ash-dim);border-color:var(--line);background:transparent;}
+#previewOverlay{position:fixed;inset:0;background:rgba(4,3,3,0.92);z-index:300;display:none;align-items:center;justify-content:center;padding:24px;}
+#previewOverlay.active{display:flex;}
+.preview-modal{
+  position:relative;max-width:640px;width:100%;background:var(--ember-card);border:1px solid var(--gold-soft);
+  clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+  padding:56px 22px 24px;box-shadow:0 0 40px rgba(201,151,44,0.15), 0 30px 70px rgba(0,0,0,0.6);
+}
+.preview-close{
+  position:absolute;top:16px;left:16px;z-index:5;background:rgba(0,0,0,0.55);border:1px solid var(--line);
+  color:var(--ash);font-size:12.5px;font-weight:700;padding:8px 16px;border-radius:2px;letter-spacing:.6px;
+}
+.preview-close:hover{border-color:var(--gold-soft);color:var(--gold);}
+.preview-media{
+  width:100%;min-height:240px;max-height:58vh;display:flex;align-items:center;justify-content:center;
+  background:#000;border:1px solid var(--line);overflow:hidden;
+}
+.preview-media img{max-width:100%;max-height:58vh;object-fit:contain;}
+.preview-info{margin-top:16px;text-align:center;}
+.preview-hero{font-size:11px;letter-spacing:2px;color:var(--ash-dim);font-weight:700;}
+.preview-name{font-family:var(--font-display);font-size:21px;color:#f2ede6;margin-top:5px;}
+
 @media (max-width:820px){
   .sidebar{position:fixed;left:-236px;top:0;bottom:0;z-index:150;transition:left .2s;}
   .sidebar.open{left:0;}
@@ -458,6 +488,11 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
               <label>Image URL (optional)</label>
               <input type="url" id="skinImage" placeholder="https://example.com/skin-image.jpg">
             </div>
+            <div class="field-inline">
+              <label>Animation / GIF URL (optional)</label>
+              <input type="url" id="skinGif" placeholder="https://example.com/arcana-animation.gif">
+            </div>
+            <div class="form-hint">Paste a GIF or animated preview link — admins can click "Preview Animation" on the item to showcase it, then go back.</div>
             <div id="imgPreviewHint" style="display:none;margin-bottom:14px;">
               <img id="imgPreview" src="" alt="preview" style="width:100%;max-height:140px;object-fit:cover;border:1px solid var(--line);border-radius:2px;">
             </div>
@@ -500,6 +535,18 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
     <div class="btn-row">
       <button class="btn-sm primary" id="modalConfirm" style="background:linear-gradient(180deg,var(--danger),#7a231a);">Delete</button>
       <button class="btn-sm ghost" id="modalCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- animation showcase preview -->
+<div id="previewOverlay">
+  <div class="preview-modal">
+    <button class="preview-close" id="previewClose">← Back</button>
+    <div class="preview-media" id="previewMedia"></div>
+    <div class="preview-info">
+      <div class="preview-hero" id="previewHero"></div>
+      <div class="preview-name" id="previewName"></div>
     </div>
   </div>
 </div>
@@ -604,13 +651,13 @@ function heroTheme(hero){
    SAMPLE / SEED DATA
 ========================================================= */
 const SEED_SKINS = [
-  { hero:"Windranger",     name:"Sonic Scourge",           type:"Arcana",   price:1899, stock:5,  sold:12, image:"" },
-  { hero:"Shadow Fiend",    name:"Demon Eater's Wrath",     type:"Immortal", price:1299, stock:0,  sold:30, image:"" },
-  { hero:"Earthshaker",     name:"Stonehall Warbringer",    type:"Immortal", price:999,  stock:8,  sold:14, image:"" },
-  { hero:"Spectre",         name:"Bloodmoon Reaper",        type:"Arcana",   price:2199, stock:3,  sold:21, image:"" },
-  { hero:"Faceless Void",    name:"Continuum Anomaly",       type:"Immortal", price:1199, stock:0,  sold:18, image:"" },
-  { hero:"Wraith King",     name:"Skeleton Overlord's Crown",type:"Immortal", price:899,  stock:12, sold:9,  image:"" },
-  { hero:"Drow Ranger",     name:"Frostbound Huntress",     type:"Immortal", price:1099, stock:6,  sold:11, image:"" },
+  { hero:"Windranger",     name:"Sonic Scourge",           type:"Arcana",   price:1899, stock:5,  sold:12, image:"", gif:"" },
+  { hero:"Shadow Fiend",    name:"Demon Eater's Wrath",     type:"Immortal", price:1299, stock:0,  sold:30, image:"", gif:"" },
+  { hero:"Earthshaker",     name:"Stonehall Warbringer",    type:"Immortal", price:999,  stock:8,  sold:14, image:"", gif:"" },
+  { hero:"Spectre",         name:"Bloodmoon Reaper",        type:"Arcana",   price:2199, stock:3,  sold:21, image:"", gif:"" },
+  { hero:"Faceless Void",    name:"Continuum Anomaly",       type:"Immortal", price:1199, stock:0,  sold:18, image:"", gif:"" },
+  { hero:"Wraith King",     name:"Skeleton Overlord's Crown",type:"Immortal", price:899,  stock:12, sold:9,  image:"", gif:"" },
+  { hero:"Drow Ranger",     name:"Frostbound Huntress",     type:"Immortal", price:1099, stock:6,  sold:11, image:"", gif:"" },
 ];
 const SEED_SALES = [
   { buyer:"ShadowHunter99",   skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:1899, date:"2026-08-02" },
@@ -901,6 +948,11 @@ function renderSkinGrid(type, gridId, countId){
           <span class="skin-price">${money(s.price)}</span>
           <span class="skin-stock ${stockClass}">${soldOut?'0 left':(stock+' left')}</span>
         </div>
+        <div class="skin-preview-row">
+          <button class="act-preview" onclick="openPreview('${id}')" ${s.gif ? '' : 'disabled'} title="${s.gif ? 'Watch the animated showcase' : 'No animation link added yet'}">
+            ${s.gif ? '▶ Preview Animation' : '▶ No Animation Yet'}
+          </button>
+        </div>
         <div class="skin-actions">
           <button class="act-edit" onclick="editSkin('${id}')">Edit</button>
           <button class="act-sell" onclick="recordSale('${id}')" ${soldOut?'disabled':''}>Sell 1</button>
@@ -966,8 +1018,7 @@ function resetSkinForm(){
   document.getElementById('skinSubmitBtn').textContent = 'Save Skin';
   skinCancelBtn.style.display='none';
   document.getElementById('imgPreviewHint').style.display='none';
-}
-skinCancelBtn.onclick = resetSkinForm;
+}skinCancelBtn.onclick = resetSkinForm;
 
 /* live image preview as the URL is typed/pasted */
 const skinImageInput = document.getElementById('skinImage');
@@ -994,6 +1045,7 @@ window.editSkin = function(id){
   document.getElementById('skinPrice').value = s.price;
   document.getElementById('skinStock').value = s.stock;
   document.getElementById('skinImage').value = s.image || '';
+  document.getElementById('skinGif').value = s.gif || '';
   if(s.image){ imgPreview.src = s.image; imgPreviewHint.style.display='block'; } else { imgPreviewHint.style.display='none'; }
   document.getElementById('formTitle').textContent = 'Edit Skin';
   document.getElementById('skinSubmitBtn').textContent = 'Update Skin';
@@ -1017,6 +1069,7 @@ skinForm.addEventListener('submit', async (e)=>{
     price: parseFloat(document.getElementById('skinPrice').value),
     stock: parseInt(document.getElementById('skinStock').value,10),
     image: document.getElementById('skinImage').value.trim(),
+    gif: document.getElementById('skinGif').value.trim(),
     sold: id && SKINS[id] ? (SKINS[id].sold||0) : 0,
   };
   try{
@@ -1060,6 +1113,27 @@ window.recordSale = async function(id){
     await loadAll();
   }catch(err){ toast('Could not record sale.', true); }
 };
+
+/* =========================================================
+   ANIMATION SHOWCASE PREVIEW (GIF)
+========================================================= */
+const previewOverlay = document.getElementById('previewOverlay');
+window.openPreview = function(id){
+  const s = SKINS[id];
+  if(!s) return;
+  if(!s.gif){ toast('No animation link added for this skin yet — add one in Edit.', true); return; }
+  document.getElementById('previewMedia').innerHTML = `<img src="${s.gif}" alt="${s.name} animation showcase" onerror="this.parentElement.innerHTML='Animation failed to load.';">`;
+  document.getElementById('previewHero').textContent = s.hero.toUpperCase() + ' • ' + s.type.toUpperCase();
+  document.getElementById('previewName').textContent = s.name;
+  previewOverlay.classList.add('active');
+};
+function closePreview(){
+  previewOverlay.classList.remove('active');
+  document.getElementById('previewMedia').innerHTML = '';
+}
+document.getElementById('previewClose').onclick = closePreview;
+previewOverlay.addEventListener('click', (e)=>{ if(e.target === previewOverlay) closePreview(); });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closePreview(); });
 
 /* =========================================================
    MODAL
