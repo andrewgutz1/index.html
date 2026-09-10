@@ -3,1373 +3,1065 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reliquary &mdash; Dota 2 Skin Marketplace Admin</title>
-
+<title>DOTA2 Market — Admin Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ============================= TOKENS ============================= */
+/* ============ TOKENS ============ */
 :root{
-  --void:#0B0908;
-  --panel:#171210;
-  --panel-raised:#211A16;
-  --panel-raised-2:#2A2119;
-  --bronze-line:#3A2E22;
-  --bronze-line-soft:#2A2119;
-  --blood:#8B2A32;
-  --blood-bright:#B33944;
-  --gold:#C9A24B;
-  --gold-bright:#E8C468;
-  --teal:#4F9187;
-  --teal-bright:#66B0A4;
-  --parchment:#E9E2D3;
-  --muted:#9A8F7E;
-  --muted-dim:#6E6457;
-  --danger:#B33944;
-  --radius-s:4px;
-  --radius-m:8px;
-  --radius-l:14px;
-  --shadow-deep: 0 20px 50px rgba(0,0,0,0.55);
-  --font-display:'Cinzel', serif;
-  --font-body:'Barlow Semi Condensed', sans-serif;
+  --void:#0a0908;
+  --char:#161311;
+  --ember-card:#1e1a17;
+  --line:#332b26;
+  --blood:#a01418;
+  --blood-bright:#e2242a;
+  --gold:#c9972c;
+  --gold-soft:#8a6a2c;
+  --ash:#c7c0b8;
+  --ash-dim:#8a8179;
+  --arcana:#d97a29;
+  --immortal:#b3282d;
+  --ok:#4a8a5a;
+  --danger:#c0392b;
+  --radius:2px;
+  --font-display:'Cinzel',serif;
+  --font-body:'Rajdhani',sans-serif;
 }
-
-*{box-sizing:border-box; margin:0; padding:0;}
+*{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;}
 body{
   background:
-    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(139,42,50,0.16), transparent 60%),
-    radial-gradient(ellipse 700px 500px at 90% 10%, rgba(201,162,75,0.08), transparent 55%),
+    radial-gradient(ellipse 900px 500px at 50% -10%, rgba(160,20,24,0.18), transparent 60%),
     var(--void);
-  color:var(--parchment);
+  color:var(--ash);
   font-family:var(--font-body);
   font-size:16px;
-  -webkit-font-smoothing:antialiased;
   min-height:100vh;
   overflow-x:hidden;
 }
-::selection{ background:var(--gold); color:var(--void); }
-::-webkit-scrollbar{width:10px; height:10px;}
-::-webkit-scrollbar-track{background:var(--void);}
-::-webkit-scrollbar-thumb{background:var(--bronze-line); border-radius:8px;}
-::-webkit-scrollbar-thumb:hover{background:var(--gold);}
-a{color:inherit; text-decoration:none;}
-button{font-family:inherit; cursor:pointer;}
-input,select,textarea{font-family:inherit;}
-:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:2px; }
+::selection{background:var(--blood-bright);color:#fff;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+input,select{font-family:inherit;}
 
-.hidden{display:none !important;}
-
-/* ============================= ORNAMENT / SHARED ============================= */
-.rune-divider{
-  height:1px;
-  background:linear-gradient(90deg, transparent, var(--bronze-line) 15%, var(--bronze-line) 85%, transparent);
-  position:relative;
-}
-.rune-divider::after{
-  content:'\2726';
-  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  background:var(--void); color:var(--gold); font-size:11px; padding:0 10px;
+/* ember particles */
+#embers{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.ember{position:absolute;bottom:-10px;width:3px;height:3px;background:var(--blood-bright);border-radius:50%;opacity:0;box-shadow:0 0 6px 2px rgba(226,36,42,0.6);animation:rise linear infinite;}
+@keyframes rise{
+  0%{transform:translateY(0) translateX(0);opacity:0;}
+  10%{opacity:.9;}
+  90%{opacity:.4;}
+  100%{transform:translateY(-105vh) translateX(20px);opacity:0;}
 }
 
-.brandmark{
-  display:flex; align-items:center; gap:12px;
+/* ============ LOGO ============ */
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-mark{
+  width:42px;height:42px;position:relative;flex-shrink:0;
+  background:linear-gradient(135deg,var(--blood) 0%,#5a0d0f 100%);
+  clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 14px rgba(160,20,24,0.55), inset 0 0 8px rgba(0,0,0,0.5);
+  border:1px solid var(--gold-soft);
 }
-.brandmark svg{ flex-shrink:0; filter:drop-shadow(0 0 10px rgba(201,162,75,0.35)); }
-.brandmark .word{
-  font-family:var(--font-display);
-  font-weight:700;
-  letter-spacing:0.06em;
-  font-size:19px;
-  line-height:1;
-  color:var(--parchment);
+.logo-mark::before{
+  content:"";
+  width:16px;height:16px;
+  background:var(--gold);
+  clip-path:polygon(50% 0%, 100% 100%, 0% 100%);
+  filter:drop-shadow(0 0 4px rgba(201,151,44,0.8));
 }
-.brandmark .word span{ color:var(--gold-bright); }
-.brandmark .sub{
-  font-size:10.5px;
-  color:var(--muted-dim);
-  letter-spacing:0.18em;
-  margin-top:4px;
-}
+.logo-text{font-family:var(--font-display);font-weight:900;letter-spacing:2px;font-size:20px;color:#f2ede6;line-height:1;}
+.logo-text span{color:var(--blood-bright);}
+.logo-sub{font-size:10px;letter-spacing:4px;color:var(--ash-dim);font-weight:600;margin-top:2px;}
 
-/* ============================= AUTH SCREEN ============================= */
-#auth-screen{
-  min-height:100vh;
-  display:flex; align-items:center; justify-content:center;
-  padding:32px 20px;
-  position:relative;
-}
-.auth-backdrop{
-  position:fixed; inset:0; z-index:0; pointer-events:none;
-  background-image:
-    linear-gradient(rgba(201,162,75,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(201,162,75,0.035) 1px, transparent 1px);
-  background-size:42px 42px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+/* ============ AUTH SCREEN ============ */
+#authScreen{
+  position:relative;z-index:1;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:24px;
 }
 .auth-card{
-  position:relative; z-index:1;
-  width:100%; max-width:420px;
-  background:linear-gradient(180deg, var(--panel-raised), var(--panel));
-  border:1px solid var(--bronze-line);
-  border-radius:var(--radius-l);
-  padding:40px 38px 34px;
-  box-shadow:var(--shadow-deep);
-  opacity:0; transform:translateY(18px) scale(0.98);
-  animation:authIn 0.7s cubic-bezier(.16,.9,.35,1) forwards;
+  width:100%;max-width:400px;
+  background:linear-gradient(180deg, var(--ember-card), var(--char));
+  border:1px solid var(--line);
+  clip-path:polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+  padding:38px 34px 32px;
+  position:relative;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.4), 0 30px 60px -20px rgba(0,0,0,0.8);
 }
-@keyframes authIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
 .auth-card::before{
-  content:'';
-  position:absolute; inset:0; border-radius:var(--radius-l);
-  padding:1px;
-  background:linear-gradient(135deg, rgba(201,162,75,0.5), transparent 30%, transparent 70%, rgba(139,42,50,0.4));
-  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor; mask-composite:exclude;
-  pointer-events:none;
+  content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--blood-bright),var(--gold),var(--blood-bright),transparent);
+  opacity:.85;
 }
-.auth-logo-wrap{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; margin-bottom:26px;}
-.auth-logo-wrap .brandmark{ flex-direction:column; }
-.auth-logo-wrap .word{ font-size:24px; }
-.auth-tag{ color:var(--muted); font-size:14px; letter-spacing:0.02em; margin-top:-4px;}
-
-.field{ margin-bottom:16px; }
-.field label{
-  display:block; font-size:12px; letter-spacing:0.09em; color:var(--muted);
-  margin-bottom:7px; text-transform:uppercase; font-weight:600;
-}
+.auth-head{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:28px;}
+.auth-title{font-family:var(--font-display);font-size:15px;letter-spacing:3px;color:var(--ash-dim);margin-top:6px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;letter-spacing:1.5px;color:var(--ash-dim);margin-bottom:6px;font-weight:600;}
 .field input{
-  width:100%; background:var(--void); border:1px solid var(--bronze-line);
-  border-radius:var(--radius-s); padding:11px 13px; color:var(--parchment);
-  font-size:15px; transition:border-color .2s, box-shadow .2s;
+  width:100%;padding:11px 13px;background:#0d0b0a;border:1px solid var(--line);
+  color:var(--ash);font-size:15px;font-weight:500;border-radius:var(--radius);
+  transition:border-color .15s, box-shadow .15s;
 }
-.field input::placeholder{ color:var(--muted-dim); }
-.field input:focus{ border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,162,75,0.12); }
-
+.field input:focus{outline:none;border-color:var(--blood-bright);box-shadow:0 0 0 3px rgba(226,36,42,0.15);}
 .btn{
-  display:inline-flex; align-items:center; justify-content:center; gap:8px;
-  border:1px solid transparent; border-radius:var(--radius-s);
-  padding:11px 18px; font-size:14.5px; font-weight:600; letter-spacing:0.03em;
-  transition:transform .15s, filter .15s, background .2s, border-color .2s;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 20px;font-weight:700;font-size:14px;letter-spacing:1.5px;
+  border-radius:var(--radius);transition:transform .12s, box-shadow .12s, background .15s;
 }
-.btn:active{ transform:translateY(1px); }
-.btn-primary{ background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#241A0B; width:100%; }
-.btn-primary:hover{ filter:brightness(1.08); }
-.btn-ghost{ background:transparent; border-color:var(--bronze-line); color:var(--parchment); }
-.btn-ghost:hover{ border-color:var(--gold); color:var(--gold-bright); }
-.btn-danger{ background:transparent; border-color:var(--blood); color:var(--blood-bright); }
-.btn-danger:hover{ background:rgba(139,42,50,0.15); }
-.btn-teal{ background:linear-gradient(180deg, var(--teal-bright), var(--teal)); color:#0C201D; }
-.btn-teal:hover{ filter:brightness(1.08); }
-.btn-sm{ padding:7px 12px; font-size:12.5px; }
-.btn-block{ width:100%; }
-.btn[disabled]{ opacity:0.55; pointer-events:none; }
-
-.auth-switch{
-  text-align:center; margin-top:18px; font-size:13.5px; color:var(--muted);
+.btn-primary{
+  width:100%;background:linear-gradient(180deg,var(--blood-bright),var(--blood));
+  color:#fff;box-shadow:0 4px 14px rgba(160,20,24,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
 }
-.auth-switch button{ background:none; border:none; color:var(--gold-bright); font-weight:600; font-size:13.5px; }
-.auth-switch button:hover{ text-decoration:underline; }
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(160,20,24,0.5);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ash-dim);width:100%;margin-top:10px;}
+.btn-ghost:hover{border-color:var(--gold-soft);color:var(--gold);}
+.auth-msg{margin-top:14px;font-size:13px;text-align:center;min-height:18px;font-weight:600;}
+.auth-msg.err{color:var(--danger);}
+.auth-msg.ok{color:var(--ok);}
+.auth-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--ash-dim);}
+.auth-switch button{color:var(--gold);font-weight:700;text-decoration:underline;text-underline-offset:3px;}
+.attempts-row{display:flex;gap:6px;justify-content:center;margin-top:14px;}
+.attempt-dot{width:9px;height:9px;background:var(--blood);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);opacity:.9;}
+.attempt-dot.used{background:#3a322c;opacity:.5;}
 
-.auth-error{
-  background:rgba(139,42,50,0.14); border:1px solid rgba(139,42,50,0.5);
-  color:#F0A9AF; font-size:13px; padding:9px 12px; border-radius:var(--radius-s);
-  margin-bottom:16px; display:none;
-}
-.auth-error.show{ display:block; }
-
-/* ============================= APP SHELL ============================= */
-#app-shell{ display:flex; min-height:100vh; }
-
+/* ============ APP SHELL ============ */
+#app{display:none;min-height:100vh;position:relative;z-index:1;}
+#app.active{display:flex;}
 .sidebar{
-  width:250px; flex-shrink:0;
-  background:linear-gradient(180deg, var(--panel-raised), var(--panel) 60%);
-  border-right:1px solid var(--bronze-line);
-  display:flex; flex-direction:column;
-  position:sticky; top:0; height:100vh;
+  width:236px;flex-shrink:0;background:var(--char);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:22px 0;
 }
-.sidebar-head{ padding:24px 22px 18px; }
-.sidebar-nav{ flex:1; padding:10px 14px; display:flex; flex-direction:column; gap:3px; overflow-y:auto; }
+.sidebar .logo{padding:0 20px 22px;border-bottom:1px solid var(--line);margin-bottom:14px;}
+.nav-list{list-style:none;flex:1;display:flex;flex-direction:column;gap:2px;padding:0 10px;}
 .nav-item{
-  display:flex; align-items:center; gap:12px;
-  padding:11px 14px; border-radius:var(--radius-s);
-  color:var(--muted); font-size:14.5px; font-weight:500; letter-spacing:0.01em;
-  border:1px solid transparent; position:relative;
-  transition:background .18s, color .18s, border-color .18s;
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  color:var(--ash-dim);font-weight:600;font-size:14.5px;letter-spacing:.4px;
+  border-left:2px solid transparent;transition:background .12s,color .12s,border-color .12s;
+  border-radius:var(--radius);
 }
-.nav-item svg{ width:18px; height:18px; flex-shrink:0; opacity:0.85; }
-.nav-item:hover{ color:var(--parchment); background:rgba(201,162,75,0.06); }
-.nav-item.active{
-  color:var(--gold-bright); background:rgba(201,162,75,0.1);
-  border-color:rgba(201,162,75,0.28);
-}
-.nav-item.active::before{
-  content:''; position:absolute; left:-14px; top:50%; transform:translateY(-50%);
-  width:3px; height:60%; background:var(--gold); border-radius:2px;
-}
-.nav-item .count{
-  margin-left:auto; font-size:11px; color:var(--muted-dim); background:var(--void);
-  border:1px solid var(--bronze-line); padding:1px 7px; border-radius:20px;
-}
-.sidebar-foot{ padding:16px 18px 20px; border-top:1px solid var(--bronze-line-soft); }
-.admin-chip{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-.admin-avatar{
-  width:34px; height:34px; border-radius:50%; flex-shrink:0;
-  background:linear-gradient(135deg, var(--blood), var(--gold));
-  display:flex; align-items:center; justify-content:center;
-  font-family:var(--font-display); font-weight:700; color:var(--void); font-size:14px;
-}
-.admin-meta{ overflow:hidden; }
-.admin-name{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.admin-role{ font-size:11px; color:var(--muted-dim); letter-spacing:0.06em; text-transform:uppercase; }
+.nav-item .ico{width:18px;height:18px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;}
+.nav-item:hover{background:rgba(226,36,42,0.06);color:var(--ash);}
+.nav-item.active{background:rgba(226,36,42,0.12);color:#f2ede6;border-left-color:var(--blood-bright);}
+.sidebar-foot{padding:14px 20px 0;border-top:1px solid var(--line);margin-top:10px;}
+.admin-chip{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ash-dim);padding-top:12px;}
+.admin-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);}
+.logout-btn{margin-top:10px;width:100%;font-size:12.5px;color:var(--danger);font-weight:700;letter-spacing:1px;padding:8px;border:1px solid rgba(192,57,43,0.4);border-radius:var(--radius);}
+.logout-btn:hover{background:rgba(192,57,43,0.12);}
 
-.main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
 .topbar{
-  height:66px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
-  padding:0 30px; border-bottom:1px solid var(--bronze-line-soft);
-  background:rgba(23,18,16,0.6); backdrop-filter:blur(6px);
-  position:sticky; top:0; z-index:5;
+  height:64px;border-bottom:1px solid var(--line);display:flex;align-items:center;
+  justify-content:space-between;padding:0 28px;background:linear-gradient(180deg, rgba(255,255,255,0.015), transparent);
 }
-.topbar h1{ font-family:var(--font-display); font-size:20px; font-weight:600; letter-spacing:0.02em; }
-.topbar .sub{ font-size:12.5px; color:var(--muted); margin-top:2px; }
-.topbar-actions{ display:flex; align-items:center; gap:10px; }
+.topbar h1{font-family:var(--font-display);font-size:19px;letter-spacing:1.5px;color:#f2ede6;font-weight:700;}
+.topbar .sub{font-size:12.5px;color:var(--ash-dim);margin-top:2px;}
+.content{flex:1;padding:28px;overflow-y:auto;}
+.view{display:none;animation:fadeIn .25s ease;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
-.stage{ padding:28px 30px 60px; flex:1; }
-.view{ animation:viewIn .35s ease both; }
-@keyframes viewIn{ from{ opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
-
-/* ============================= DASHBOARD ============================= */
-.stat-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:30px; }
+/* stat cards */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:26px;}
 .stat-card{
-  background:var(--panel-raised); border:1px solid var(--bronze-line);
-  border-radius:var(--radius-m); padding:20px; position:relative; overflow:hidden;
+  background:var(--ember-card);border:1px solid var(--line);padding:18px 20px;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+  position:relative;
 }
-.stat-card::after{
-  content:''; position:absolute; right:-30px; top:-30px; width:100px; height:100px; border-radius:50%;
-  background:radial-gradient(circle, var(--glow-color, rgba(201,162,75,0.18)), transparent 70%);
-}
-.stat-label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:10px; }
-.stat-value{ font-family:var(--font-display); font-size:32px; font-weight:700; color:var(--parchment); }
-.stat-value.gold{ color:var(--gold-bright); }
-.stat-value.teal{ color:var(--teal-bright); }
-.stat-value.blood{ color:var(--blood-bright); }
-.stat-foot{ font-size:12px; color:var(--muted-dim); margin-top:6px; }
+.stat-card .label{font-size:11.5px;letter-spacing:1.5px;color:var(--ash-dim);font-weight:600;}
+.stat-card .value{font-family:var(--font-display);font-size:30px;font-weight:700;color:#f2ede6;margin-top:8px;}
+.stat-card .value.accent-blood{color:var(--blood-bright);}
+.stat-card .value.accent-gold{color:var(--gold);}
+.stat-card .value.accent-ok{color:var(--ok);}
 
-.panel{
-  background:var(--panel-raised); border:1px solid var(--bronze-line);
-  border-radius:var(--radius-m); padding:22px;
-}
-.panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-.panel-head h2{ font-family:var(--font-display); font-size:16px; font-weight:600; }
-.dash-grid{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
+.section-head{display:flex;align-items:center;justify-content:between;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.section-head h2{font-family:var(--font-display);font-size:17px;color:#f2ede6;letter-spacing:.6px;}
+.section-head .count{font-size:12.5px;color:var(--ash-dim);margin-left:8px;font-weight:500;}
 
-.mini-row{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--bronze-line-soft); }
-.mini-row:last-child{ border-bottom:none; }
-.mini-thumb{ width:38px; height:38px; border-radius:6px; object-fit:cover; border:1px solid var(--bronze-line); background:var(--void); }
-.mini-info{ flex:1; min-width:0; }
-.mini-name{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.mini-sub{ font-size:11.5px; color:var(--muted-dim); }
-.badge{
-  font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
-  padding:3px 9px; border-radius:20px; white-space:nowrap;
+/* skin cards */
+.skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;}
+.skin-card{
+  background:var(--ember-card);border:1px solid var(--line);overflow:hidden;position:relative;
+  clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  transition:border-color .15s, transform .15s;
 }
-.badge-in{ background:rgba(79,145,135,0.16); color:var(--teal-bright); border:1px solid rgba(79,145,135,0.4); }
-.badge-low{ background:rgba(201,162,75,0.14); color:var(--gold-bright); border:1px solid rgba(201,162,75,0.4); }
-.badge-out{ background:rgba(139,42,50,0.16); color:#F0A9AF; border:1px solid rgba(139,42,50,0.45); }
-.badge-immortal{ background:rgba(201,162,75,0.12); color:var(--gold-bright); border:1px solid rgba(201,162,75,0.35); }
-.badge-arcana{ background:rgba(139,42,50,0.12); color:#E39AA1; border:1px solid rgba(139,42,50,0.35); }
+.skin-card:hover{border-color:var(--gold-soft);}
+.skin-card.soldout{opacity:.62;}
+.skin-art{
+  height:118px;display:flex;align-items:center;justify-content:center;position:relative;
+  font-family:var(--font-display);font-size:44px;font-weight:900;color:rgba(255,255,255,0.9);
+  overflow:hidden;
+}
+.skin-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg, transparent 40%, rgba(10,9,8,0.85));}
+.skin-art span{position:relative;z-index:1;text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+.rarity-tag{
+  position:absolute;top:10px;left:10px;z-index:2;font-size:10px;letter-spacing:1.5px;font-weight:700;
+  padding:3px 9px;border-radius:2px;text-transform:uppercase;
+}
+.rarity-tag.arcana{background:rgba(217,122,41,0.18);color:var(--arcana);border:1px solid rgba(217,122,41,0.5);}
+.rarity-tag.immortal{background:rgba(179,40,45,0.18);color:#ff5257;border:1px solid rgba(179,40,45,0.5);}
+.soldout-badge{position:absolute;top:10px;right:10px;z-index:2;background:#000;border:1px solid var(--danger);color:var(--danger);font-size:9.5px;letter-spacing:1.5px;font-weight:700;padding:3px 8px;}
+.skin-body{padding:14px 16px 16px;}
+.skin-hero{font-size:11.5px;color:var(--ash-dim);letter-spacing:1px;font-weight:600;}
+.skin-name{font-size:16px;font-weight:700;color:#f2ede6;margin-top:2px;margin-bottom:10px;line-height:1.25;}
+.skin-meta{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:12px;}
+.skin-price{font-family:var(--font-display);color:var(--gold);font-weight:700;font-size:16px;}
+.skin-stock{color:var(--ash-dim);}
+.skin-stock.low{color:var(--arcana);}
+.skin-stock.zero{color:var(--danger);font-weight:700;}
+.skin-actions{display:flex;gap:8px;}
+.skin-actions button{flex:1;padding:8px 0;font-size:12px;font-weight:700;letter-spacing:.6px;border-radius:2px;border:1px solid var(--line);}
+.act-edit:hover{border-color:var(--gold-soft);color:var(--gold);}
+.act-del:hover{border-color:var(--danger);color:var(--danger);}
+.act-sell:hover{border-color:var(--ok);color:var(--ok);}
 
-/* ============================= TOOLBAR / FILTERS ============================= */
-.toolbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:22px; flex-wrap:wrap; }
-.search-wrap{ position:relative; flex:1; min-width:220px; max-width:340px; }
-.search-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--muted-dim); }
-.search-wrap input{
-  width:100%; background:var(--void); border:1px solid var(--bronze-line); border-radius:20px;
-  padding:9px 14px 9px 34px; color:var(--parchment); font-size:13.5px;
+/* forms */
+.panel{background:var(--ember-card);border:1px solid var(--line);padding:22px;max-width:560px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.field-inline{margin-bottom:14px;}
+.field-inline label{display:block;font-size:12px;letter-spacing:1px;color:var(--ash-dim);margin-bottom:6px;font-weight:600;}
+.field-inline input,.field-inline select{
+  width:100%;padding:10px 12px;background:#0d0b0a;border:1px solid var(--line);color:var(--ash);
+  font-size:14.5px;border-radius:2px;
 }
-.search-wrap input:focus{ border-color:var(--gold); outline:none; }
-.chip-group{ display:flex; gap:8px; }
-.chip{
-  padding:8px 14px; border-radius:20px; border:1px solid var(--bronze-line); background:var(--panel-raised);
-  font-size:12.5px; color:var(--muted); font-weight:600; letter-spacing:0.02em;
-}
-.chip.active{ border-color:var(--gold); color:var(--gold-bright); background:rgba(201,162,75,0.1); }
-.chip:hover{ color:var(--parchment); }
+.field-inline input:focus,.field-inline select:focus{outline:none;border-color:var(--blood-bright);}
+.btn-row{display:flex;gap:10px;margin-top:6px;}
+.btn-sm{padding:10px 22px;font-size:13px;font-weight:700;letter-spacing:1px;border-radius:2px;}
+.btn-sm.primary{background:linear-gradient(180deg,var(--blood-bright),var(--blood));color:#fff;}
+.btn-sm.ghost{border:1px solid var(--line);color:var(--ash-dim);}
+.btn-sm.ghost:hover{border-color:var(--gold-soft);color:var(--gold);}
+.form-hint{font-size:11.5px;color:var(--ash-dim);margin-top:-8px;margin-bottom:14px;}
 
-/* ============================= ITEM GRID / CARD ============================= */
-.item-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:18px; }
-.item-card{
-  background:var(--panel-raised); border:1px solid var(--bronze-line); border-radius:var(--radius-m);
-  overflow:hidden; display:flex; flex-direction:column; transition:border-color .2s, transform .2s;
-}
-.item-card:hover{ border-color:var(--gold); transform:translateY(-2px); }
-.item-media{
-  height:150px; position:relative; background:
-    radial-gradient(ellipse at 50% 20%, rgba(201,162,75,0.14), transparent 70%), var(--void);
-  display:flex; align-items:center; justify-content:center; overflow:hidden;
-  border-bottom:1px solid var(--bronze-line-soft);
-}
-.item-media img{ width:100%; height:100%; object-fit:cover; }
-.item-media .no-img{ color:var(--muted-dim); font-size:12px; text-align:center; }
-.item-rarity-tag{
-  position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; letter-spacing:0.05em;
-  padding:3px 8px; border-radius:4px; text-transform:uppercase;
-}
-.item-body{ padding:14px 15px 15px; display:flex; flex-direction:column; gap:8px; flex:1; }
-.item-hero{ font-size:11px; color:var(--muted-dim); letter-spacing:0.06em; text-transform:uppercase; }
-.item-name{ font-family:var(--font-display); font-size:15px; font-weight:600; line-height:1.3; }
-.item-row{ display:flex; align-items:center; justify-content:space-between; margin-top:auto; }
-.item-price{ font-size:16px; font-weight:700; color:var(--gold-bright); }
-.item-stock-line{ font-size:12px; color:var(--muted); }
-.item-actions{ display:flex; gap:8px; margin-top:10px; }
-.item-actions .btn{ flex:1; }
-.stepper{ display:flex; align-items:center; gap:8px; margin-top:6px; }
-.stepper button{
-  width:26px; height:26px; border-radius:6px; border:1px solid var(--bronze-line); background:var(--void);
-  color:var(--parchment); font-size:15px; display:flex; align-items:center; justify-content:center;
-}
-.stepper button:hover{ border-color:var(--gold); color:var(--gold-bright); }
-.stepper .val{ font-size:13.5px; font-weight:600; min-width:22px; text-align:center; }
+/* table (sales) */
+.table-wrap{background:var(--ember-card);border:1px solid var(--line);overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px;}
+thead th{text-align:left;padding:12px 16px;font-size:11.5px;letter-spacing:1.2px;color:var(--ash-dim);border-bottom:1px solid var(--line);font-weight:700;}
+tbody td{padding:12px 16px;border-bottom:1px solid rgba(51,43,38,0.6);color:var(--ash);}
+tbody tr:hover{background:rgba(226,36,42,0.04);}
+.pill{font-size:11px;padding:3px 9px;border-radius:2px;font-weight:700;letter-spacing:.5px;}
+.pill.arcana{background:rgba(217,122,41,0.15);color:var(--arcana);}
+.pill.immortal{background:rgba(179,40,45,0.15);color:#ff5257;}
 
-.empty-state{
-  text-align:center; padding:70px 20px; color:var(--muted);
-  border:1px dashed var(--bronze-line); border-radius:var(--radius-m);
-}
-.empty-state svg{ opacity:0.5; margin-bottom:14px; }
-.empty-state h3{ font-family:var(--font-display); color:var(--parchment); font-size:17px; margin-bottom:6px; }
-.empty-state p{ font-size:13.5px; }
+.empty-state{text-align:center;padding:60px 20px;color:var(--ash-dim);}
+.empty-state .ico{font-size:38px;margin-bottom:10px;opacity:.5;}
 
-/* ============================= TABLE (STOCK MANAGER) ============================= */
-.table-wrap{ overflow-x:auto; border:1px solid var(--bronze-line); border-radius:var(--radius-m); }
-table{ width:100%; border-collapse:collapse; min-width:760px; }
-thead th{
-  text-align:left; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted);
-  padding:13px 16px; background:var(--panel-raised-2); border-bottom:1px solid var(--bronze-line);
+/* toast */
+#toast{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:10px;}
+.toast-item{
+  background:var(--char);border:1px solid var(--line);border-left:3px solid var(--ok);
+  padding:12px 18px;font-size:13.5px;font-weight:600;color:var(--ash);min-width:220px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);animation:slideIn .25s ease;
 }
-tbody td{ padding:12px 16px; border-bottom:1px solid var(--bronze-line-soft); font-size:13.5px; vertical-align:middle; }
-tbody tr:last-child td{ border-bottom:none; }
-tbody tr:hover{ background:rgba(201,162,75,0.03); }
-.td-item{ display:flex; align-items:center; gap:11px; }
-.td-item img{ width:34px; height:34px; border-radius:6px; object-fit:cover; background:var(--void); border:1px solid var(--bronze-line); }
+.toast-item.err{border-left-color:var(--danger);}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);}}
 
-/* ============================= FORM (ADD/EDIT) ============================= */
-.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.form-grid .full{ grid-column:1 / -1; }
-.field select{
-  width:100%; background:var(--void); border:1px solid var(--bronze-line); border-radius:var(--radius-s);
-  padding:11px 13px; color:var(--parchment); font-size:15px;
-}
-.field textarea{
-  width:100%; background:var(--void); border:1px solid var(--bronze-line); border-radius:var(--radius-s);
-  padding:11px 13px; color:var(--parchment); font-size:14.5px; resize:vertical; min-height:70px;
-}
-.img-input-row{ display:flex; gap:8px; }
-.img-input-row input{ flex:1; }
-.upload-btn{
-  border:1px solid var(--bronze-line); background:var(--void); border-radius:var(--radius-s);
-  padding:0 14px; font-size:12.5px; color:var(--muted); white-space:nowrap;
-}
-.upload-btn:hover{ border-color:var(--gold); color:var(--gold-bright); }
-.img-preview{
-  width:100%; height:160px; border:1px dashed var(--bronze-line); border-radius:var(--radius-s);
-  display:flex; align-items:center; justify-content:center; overflow:hidden; margin-top:10px; background:var(--void);
-}
-.img-preview img{ width:100%; height:100%; object-fit:cover; }
-.img-preview span{ font-size:12px; color:var(--muted-dim); }
-.form-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+/* modal */
+#modalOverlay{position:fixed;inset:0;background:rgba(5,4,4,0.75);backdrop-filter:blur(2px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+#modalOverlay.active{display:flex;}
+.modal{background:var(--ember-card);border:1px solid var(--line);width:100%;max-width:420px;padding:24px;clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);}
+.modal h3{font-family:var(--font-display);font-size:17px;color:#f2ede6;margin-bottom:10px;}
+.modal p{font-size:14px;color:var(--ash-dim);margin-bottom:18px;line-height:1.5;}
 
-/* ============================= MODAL ============================= */
-.modal-overlay{
-  position:fixed; inset:0; background:rgba(5,4,3,0.72); backdrop-filter:blur(3px);
-  display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
-  opacity:0; animation:overlayIn .2s ease forwards;
-}
-@keyframes overlayIn{ to{ opacity:1; } }
-.modal{
-  background:linear-gradient(180deg, var(--panel-raised), var(--panel));
-  border:1px solid var(--bronze-line); border-radius:var(--radius-l);
-  width:100%; max-width:640px; max-height:88vh; overflow-y:auto;
-  padding:28px 30px 30px; box-shadow:var(--shadow-deep);
-  transform:scale(0.96) translateY(10px); opacity:0;
-  animation:modalIn .28s cubic-bezier(.16,.9,.35,1) forwards;
-}
-@keyframes modalIn{ to{ transform:scale(1) translateY(0); opacity:1; } }
-.modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-.modal-head h2{ font-family:var(--font-display); font-size:19px; font-weight:600; }
-.modal-close{ background:none; border:none; color:var(--muted); font-size:22px; line-height:1; padding:4px; }
-.modal-close:hover{ color:var(--gold-bright); }
-.modal-sm{ max-width:400px; text-align:center; }
-.modal-sm p{ color:var(--muted); font-size:14px; margin:10px 0 20px; }
-.modal-sm .form-actions{ justify-content:center; }
+/* loading */
+.loader{display:flex;align-items:center;justify-content:center;gap:6px;padding:40px;}
+.loader span{width:8px;height:8px;background:var(--blood-bright);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);animation:pulse 1s infinite ease-in-out;}
+.loader span:nth-child(2){animation-delay:.15s;}
+.loader span:nth-child(3){animation-delay:.3s;}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8);}50%{opacity:1;transform:scale(1.1);}}
 
-/* ============================= TOASTS ============================= */
-#toast-stack{ position:fixed; bottom:24px; right:24px; z-index:200; display:flex; flex-direction:column; gap:10px; }
-.toast{
-  background:var(--panel-raised); border:1px solid var(--bronze-line); border-left:3px solid var(--gold);
-  border-radius:var(--radius-s); padding:13px 18px; min-width:260px; box-shadow:var(--shadow-deep);
-  font-size:13.5px; animation:toastIn .25s ease, toastOut .3s ease 2.7s forwards;
-}
-.toast.err{ border-left-color:var(--blood); }
-.toast.ok{ border-left-color:var(--teal); }
-@keyframes toastIn{ from{ opacity:0; transform:translateX(30px);} to{opacity:1; transform:translateX(0);} }
-@keyframes toastOut{ to{ opacity:0; transform:translateX(30px);} }
+.rules-note{background:rgba(217,122,41,0.08);border:1px solid rgba(217,122,41,0.3);padding:10px 14px;font-size:12px;color:var(--arcana);margin-bottom:18px;border-radius:2px;line-height:1.5;display:none;}
+.rules-note.show{display:block;}
 
-/* ============================= SETTINGS ============================= */
-.settings-card{ max-width:480px; }
-.settings-row{ display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid var(--bronze-line-soft); }
-.settings-row:last-child{ border-bottom:none; }
-.settings-row-info h4{ font-size:14px; font-weight:600; margin-bottom:3px; }
-.settings-row-info p{ font-size:12.5px; color:var(--muted); }
-
-/* ============================= RESPONSIVE ============================= */
-@media (max-width:980px){
-  .stat-grid{ grid-template-columns:repeat(2,1fr); }
-  .dash-grid{ grid-template-columns:1fr; }
-  .form-grid{ grid-template-columns:1fr; }
+@media (max-width:820px){
+  .sidebar{position:fixed;left:-236px;top:0;bottom:0;z-index:150;transition:left .2s;}
+  .sidebar.open{left:0;}
+  #menuToggle{display:flex;}
+  .content{padding:18px;}
 }
-@media (max-width:760px){
-  .sidebar{ position:fixed; left:0; top:0; bottom:0; z-index:50; transform:translateX(-100%); transition:transform .25s ease; }
-  .sidebar.open{ transform:translateX(0); }
-  .stat-grid{ grid-template-columns:1fr 1fr; }
-  .topbar{ padding:0 16px; }
-  .stage{ padding:20px 16px 50px; }
-  .menu-toggle{ display:flex !important; }
-}
-.menu-toggle{ display:none; background:none; border:1px solid var(--bronze-line); border-radius:6px; width:36px; height:36px; align-items:center; justify-content:center; color:var(--parchment); }
-
-@media (prefers-reduced-motion: reduce){
-  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
-}
+#menuToggle{display:none;width:34px;height:34px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:2px;}
 </style>
 </head>
 <body>
 
-<!-- ============================= ICONS (inline defs, reused via <use>) ============================= -->
-<svg width="0" height="0" style="position:absolute">
-<defs>
-<symbol id="i-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
-<symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c2 3-2 4-2 7a4 4 0 1 0 8 0c0-1-1-2-1-2 1 4-1 5-1 5 1-4-3-6-4-10z"/></symbol>
-<symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3l3 6-3 12M15 3l-3 6 3 12"/></symbol>
-<symbol id="i-plus-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
-<symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></symbol>
-<symbol id="i-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol>
-<symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></symbol>
-<symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
-<symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
-<symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
-<symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></symbol>
-<symbol id="i-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M9 12l3 2 3-2" opacity="0.4"/></symbol>
-<symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
-</defs>
-</svg>
+<div id="embers"></div>
 
-<!-- ============================= LOGO SVG (reused) ============================= -->
-<template id="tpl-logo">
-<svg width="34" height="34" viewBox="0 0 48 48" fill="none">
-  <path d="M24 3 L44 14 V34 L24 45 L4 34 V14 Z" stroke="#C9A24B" stroke-width="1.6" fill="rgba(201,162,75,0.06)"/>
-  <path d="M24 3 V45 M4 14 L44 34 M44 14 L4 34" stroke="#8B2A32" stroke-width="0.8" opacity="0.55"/>
-  <circle cx="24" cy="24" r="7.5" stroke="#E8C468" stroke-width="1.6" fill="#0B0908"/>
-  <path d="M24 18.5 L27 24 L24 29.5 L21 24 Z" fill="#C9A24B"/>
-</svg>
-</template>
-
-<!-- ============================= AUTH SCREEN ============================= -->
-<div id="auth-screen">
-  <div class="auth-backdrop"></div>
+<!-- ============ AUTH SCREEN ============ -->
+<div id="authScreen">
   <div class="auth-card">
-    <div class="auth-logo-wrap">
-      <div class="logo-slot"></div>
-      <div>
-        <div class="word">RELI<span>QUARY</span></div>
-        <div class="auth-tag" id="auth-tagline">Dota 2 Skin Marketplace &mdash; Admin Console</div>
+    <div class="auth-head">
+      <div class="logo">
+        <div class="logo-mark"></div>
+        <div>
+          <div class="logo-text">DOTA2 <span>MARKET</span></div>
+        </div>
       </div>
+      <div class="auth-title" id="authTitle">ADMIN ACCESS</div>
     </div>
 
-    <div class="auth-error" id="auth-error"></div>
+    <div id="rulesNote" class="rules-note">Firebase database rules must allow read/write for this demo to save data. If actions fail, set your Realtime Database rules to allow access.</div>
 
     <!-- LOGIN FORM -->
-    <form id="login-form">
+    <form id="loginForm">
       <div class="field">
-        <label for="login-username">Admin Username</label>
-        <input id="login-username" type="text" placeholder="e.g. keeper_of_relics" autocomplete="username" required>
+        <label>Username</label>
+        <input type="text" id="loginUser" autocomplete="username" required>
       </div>
       <div class="field">
-        <label for="login-password">Password</label>
-        <input id="login-password" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" required>
+        <label>Password</label>
+        <input type="password" id="loginPass" autocomplete="current-password" required>
       </div>
-      <button type="submit" class="btn btn-primary" id="login-submit-btn">Enter the Reliquary</button>
-      <div class="auth-switch">No admin account yet? <button type="button" id="show-register">Register one</button></div>
+      <button type="submit" class="btn btn-primary" id="loginBtn">ENTER THE MARKET</button>
+      <div class="auth-msg" id="loginMsg"></div>
+      <div class="attempts-row" id="attemptsRow">
+        <div class="attempt-dot" data-i="1"></div>
+        <div class="attempt-dot" data-i="2"></div>
+        <div class="attempt-dot" data-i="3"></div>
+      </div>
+      <div class="auth-switch">No admin account? <button type="button" id="showRegister">Register the first admin</button></div>
     </form>
 
     <!-- REGISTER FORM -->
-    <form id="register-form" class="hidden">
+    <form id="registerForm" style="display:none;">
       <div class="field">
-        <label for="reg-username">Choose Username</label>
-        <input id="reg-username" type="text" placeholder="e.g. keeper_of_relics" autocomplete="username" required minlength="3">
+        <label>Choose Username</label>
+        <input type="text" id="regUser" required>
       </div>
       <div class="field">
-        <label for="reg-password">Choose Password</label>
-        <input id="reg-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" required minlength="6">
+        <label>Choose Password (min 6 chars)</label>
+        <input type="password" id="regPass" minlength="6" required>
       </div>
       <div class="field">
-        <label for="reg-password2">Confirm Password</label>
-        <input id="reg-password2" type="password" placeholder="Repeat password" autocomplete="new-password" required minlength="6">
+        <label>Confirm Password</label>
+        <input type="password" id="regPass2" minlength="6" required>
       </div>
-      <button type="submit" class="btn btn-primary" id="register-submit-btn">Create Admin Account</button>
-      <div class="auth-switch">Already have an account? <button type="button" id="show-login">Sign in</button></div>
+      <button type="submit" class="btn btn-primary">CREATE ADMIN ACCOUNT</button>
+      <div class="auth-msg" id="regMsg"></div>
+      <div class="auth-switch">Already registered? <button type="button" id="showLogin">Back to login</button></div>
     </form>
   </div>
 </div>
 
-<!-- ============================= APP SHELL ============================= -->
-<div id="app-shell" class="hidden">
-
+<!-- ============ APP SHELL ============ -->
+<div id="app">
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-head">
-      <div class="brandmark">
-        <div class="logo-slot"></div>
-        <div>
-          <div class="word">RELI<span>QUARY</span></div>
-          <div class="sub">ADMIN CONSOLE</div>
-        </div>
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <div>
+        <div class="logo-text">DOTA2 <span>MARKET</span></div>
+        <div class="logo-sub">ADMIN CONSOLE</div>
       </div>
     </div>
-
-    <div class="rune-divider" style="margin:0 20px 12px;"></div>
-
-    <nav class="sidebar-nav">
-      <a href="#" class="nav-item active" data-view="dashboard"><svg><use href="#i-dashboard"/></svg> Dashboard</a>
-      <a href="#" class="nav-item" data-view="immortal"><svg><use href="#i-flame"/></svg> Immortal Skins <span class="count" id="count-immortal">0</span></a>
-      <a href="#" class="nav-item" data-view="arcana"><svg><use href="#i-gem"/></svg> Arcana Skins <span class="count" id="count-arcana">0</span></a>
-      <a href="#" class="nav-item" data-view="add"><svg><use href="#i-plus-circle"/></svg> Add New Item</a>
-      <a href="#" class="nav-item" data-view="stock"><svg><use href="#i-box"/></svg> Manage Stock</a>
-      <a href="#" class="nav-item" data-view="soldout"><svg><use href="#i-archive"/></svg> Sold Out Archive <span class="count" id="count-soldout">0</span></a>
-      <a href="#" class="nav-item" data-view="settings"><svg><use href="#i-gear"/></svg> Account Settings</a>
-    </nav>
-
+    <ul class="nav-list">
+      <li class="nav-item active" data-view="dashboard"><span class="ico">◆</span> Dashboard</li>
+      <li class="nav-item" data-view="arcanas"><span class="ico">✦</span> Arcanas</li>
+      <li class="nav-item" data-view="immortals"><span class="ico">⬢</span> Immortals</li>
+      <li class="nav-item" data-view="inventory"><span class="ico">▤</span> Inventory</li>
+      <li class="nav-item" data-view="sales"><span class="ico">⌘</span> Buyer Records</li>
+      <li class="nav-item" data-view="additem"><span class="ico">＋</span> Add New Skin</li>
+      <li class="nav-item" data-view="settings"><span class="ico">⚙</span> Account Settings</li>
+    </ul>
     <div class="sidebar-foot">
-      <div class="admin-chip">
-        <div class="admin-avatar" id="admin-avatar">A</div>
-        <div class="admin-meta">
-          <div class="admin-name" id="admin-name-display">Admin</div>
-          <div class="admin-role">Keeper</div>
-        </div>
-      </div>
-      <button class="btn btn-ghost btn-block btn-sm" id="logout-btn"><svg width="14" height="14"><use href="#i-logout"/></svg>&nbsp; Log Out</button>
+      <div class="admin-chip"><span class="dot"></span> <span id="adminNameChip">admin</span></div>
+      <button class="logout-btn" id="logoutBtn">LOG OUT</button>
     </div>
   </aside>
 
   <div class="main">
     <div class="topbar">
-      <div style="display:flex; align-items:center; gap:14px;">
-        <button class="menu-toggle" id="menu-toggle"><svg width="18" height="18"><use href="#i-menu"/></svg></button>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <button id="menuToggle">☰</button>
         <div>
-          <h1 id="topbar-title">Dashboard</h1>
-          <div class="sub" id="topbar-sub">Overview of the whole reliquary</div>
+          <h1 id="viewTitle">Dashboard</h1>
+          <div class="sub" id="viewSub">Overview of the marketplace</div>
         </div>
       </div>
-      <div class="topbar-actions">
-        <button class="btn btn-primary btn-sm" id="topbar-add-btn"><svg width="14" height="14"><use href="#i-plus-circle"/></svg>&nbsp; New Item</button>
-      </div>
+      <div class="sub">Signed in as <b id="adminNameTop" style="color:#f2ede6;"></b></div>
     </div>
 
-    <div class="stage" id="stage">
+    <div class="content">
 
-      <!-- ===== DASHBOARD VIEW ===== -->
-      <section class="view" id="view-dashboard" data-view-root>
-        <div class="stat-grid">
-          <div class="stat-card" style="--glow-color:rgba(201,162,75,0.22)">
-            <div class="stat-label">Total Relics Listed</div>
-            <div class="stat-value gold" id="stat-total">0</div>
-            <div class="stat-foot">Immortal + Arcana combined</div>
-          </div>
-          <div class="stat-card" style="--glow-color:rgba(79,145,135,0.22)">
-            <div class="stat-label">Units In Stock</div>
-            <div class="stat-value teal" id="stat-stock">0</div>
-            <div class="stat-foot">Across all active listings</div>
-          </div>
-          <div class="stat-card" style="--glow-color:rgba(139,42,50,0.22)">
-            <div class="stat-label">Reclaimed (Sold Out)</div>
-            <div class="stat-value blood" id="stat-soldout">0</div>
-            <div class="stat-foot">Listings with zero left</div>
-          </div>
-          <div class="stat-card" style="--glow-color:rgba(201,162,75,0.22)">
-            <div class="stat-label">Vault Value</div>
-            <div class="stat-value gold" id="stat-value">$0</div>
-            <div class="stat-foot">Price &times; stock remaining</div>
-          </div>
-        </div>
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="section-head"><h2>Recent Buyer Activity</h2></div>
+        <div class="table-wrap" id="recentSalesTable"></div>
+      </div>
 
-        <div class="dash-grid">
-          <div class="panel">
-            <div class="panel-head"><h2>Dwindling Stock</h2></div>
-            <div id="dash-low-list"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-head"><h2>Recently Added</h2></div>
-            <div id="dash-recent-list"></div>
-          </div>
-        </div>
-      </section>
+      <!-- ARCANAS -->
+      <div class="view" id="view-arcanas">
+        <div class="section-head"><h2>Arcana Collection <span class="count" id="arcanaCount"></span></h2></div>
+        <div class="skin-grid" id="arcanaGrid"></div>
+      </div>
 
-      <!-- ===== IMMORTAL VIEW ===== -->
-      <section class="view hidden" id="view-immortal" data-view-root>
-        <div class="toolbar">
-          <div class="search-wrap"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search immortal skins..." data-search="immortal"></div>
-        </div>
-        <div class="item-grid" id="grid-immortal"></div>
-      </section>
+      <!-- IMMORTALS -->
+      <div class="view" id="view-immortals">
+        <div class="section-head"><h2>Immortal Collection <span class="count" id="immortalCount"></span></h2></div>
+        <div class="skin-grid" id="immortalGrid"></div>
+      </div>
 
-      <!-- ===== ARCANA VIEW ===== -->
-      <section class="view hidden" id="view-arcana" data-view-root>
-        <div class="toolbar">
-          <div class="search-wrap"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search arcana skins..." data-search="arcana"></div>
-        </div>
-        <div class="item-grid" id="grid-arcana"></div>
-      </section>
+      <!-- INVENTORY -->
+      <div class="view" id="view-inventory">
+        <div class="section-head"><h2>Inventory Status</h2></div>
+        <div class="table-wrap" id="inventoryTable"></div>
+      </div>
 
-      <!-- ===== ADD ITEM VIEW ===== -->
-      <section class="view hidden" id="view-add" data-view-root>
-        <div class="panel" style="max-width:760px;">
-          <div class="panel-head"><h2>Add a New Relic to the Marketplace</h2></div>
-          <form id="add-item-form">
-            <div class="form-grid">
-              <div class="field"><label>Item Name</label><input type="text" id="f-name" placeholder="e.g. Arcana of the Frostbound Dragon" required></div>
-              <div class="field"><label>Hero</label><input type="text" id="f-hero" placeholder="e.g. Dragon Knight" required></div>
-              <div class="field"><label>Rarity</label>
-                <select id="f-type" required>
-                  <option value="" disabled selected>Select rarity</option>
-                  <option value="immortal">Immortal</option>
-                  <option value="arcana">Arcana</option>
+      <!-- SALES -->
+      <div class="view" id="view-sales">
+        <div class="section-head"><h2>Buyer Records <span class="count" id="salesCount"></span></h2></div>
+        <div class="table-wrap" id="salesTable"></div>
+      </div>
+
+      <!-- ADD ITEM -->
+      <div class="view" id="view-additem">
+        <div class="section-head"><h2 id="formTitle">Add New Skin</h2></div>
+        <div class="panel">
+          <form id="skinForm">
+            <input type="hidden" id="skinId">
+            <div class="field-inline">
+              <label>Hero</label>
+              <select id="skinHero" required>
+                <option value="">Select hero</option>
+                <option>Windranger</option>
+                <option>Shadow Fiend</option>
+                <option>Earthshaker</option>
+                <option>Spectre</option>
+                <option>Faceless Void</option>
+                <option>Wraith King</option>
+                <option>Drow Ranger</option>
+              </select>
+            </div>
+            <div class="field-inline">
+              <label>Skin Name</label>
+              <input type="text" id="skinName" placeholder="e.g. Sonic Scourge" required>
+            </div>
+            <div class="form-row">
+              <div class="field-inline">
+                <label>Type</label>
+                <select id="skinType" required>
+                  <option value="Arcana">Arcana</option>
+                  <option value="Immortal">Immortal</option>
                 </select>
               </div>
-              <div class="field"><label>Price (USD)</label><input type="number" id="f-price" min="0" step="0.01" placeholder="e.g. 24.99" required></div>
-              <div class="field"><label>Units Left in Stock</label><input type="number" id="f-stock" min="0" step="1" placeholder="e.g. 12" required></div>
-              <div class="field"><label>Origin / Set</label><input type="text" id="f-origin" placeholder="e.g. The Frostivus Collection"></div>
-              <div class="field full"><label>Description</label><textarea id="f-desc" placeholder="Short description shown to buyers..."></textarea></div>
-              <div class="field full">
-                <label>Item Image</label>
-                <div class="img-input-row">
-                  <input type="text" id="f-image-url" placeholder="Paste image URL, or upload a file &rarr;">
-                  <label class="btn upload-btn" for="f-image-file">Upload File</label>
-                  <input type="file" id="f-image-file" accept="image/*" class="hidden">
-                </div>
-                <div class="img-preview" id="add-img-preview"><span>No image selected</span></div>
+              <div class="field-inline">
+                <label>Price (USD)</label>
+                <input type="number" id="skinPrice" min="0" step="0.01" placeholder="29.99" required>
               </div>
             </div>
-            <div class="form-actions">
-              <button type="reset" class="btn btn-ghost" id="add-reset-btn">Clear Form</button>
-              <button type="submit" class="btn btn-primary" id="add-submit-btn">Add Item to Marketplace</button>
+            <div class="field-inline">
+              <label>Stock Quantity</label>
+              <input type="number" id="skinStock" min="0" step="1" placeholder="10" required>
+            </div>
+            <div class="btn-row">
+              <button type="submit" class="btn-sm primary" id="skinSubmitBtn">Save Skin</button>
+              <button type="button" class="btn-sm ghost" id="skinCancelBtn" style="display:none;">Cancel Edit</button>
             </div>
           </form>
         </div>
-      </section>
+      </div>
 
-      <!-- ===== STOCK MANAGER VIEW ===== -->
-      <section class="view hidden" id="view-stock" data-view-root>
-        <div class="toolbar">
-          <div class="search-wrap"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search all listings..." data-search="stock"></div>
-          <div class="chip-group">
-            <button class="chip active" data-stockfilter="all">All</button>
-            <button class="chip" data-stockfilter="immortal">Immortal</button>
-            <button class="chip" data-stockfilter="arcana">Arcana</button>
+      <!-- SETTINGS -->
+      <div class="view" id="view-settings">
+        <div class="section-head"><h2>Account Settings</h2></div>
+        <div class="panel">
+          <div class="field-inline">
+            <label>Logged in as</label>
+            <input type="text" id="settingsUser" disabled>
           </div>
+          <div class="field-inline">
+            <label>New Password</label>
+            <input type="password" id="settingsNewPass" placeholder="Leave blank to keep current" minlength="6">
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-sm primary" id="savePassBtn">Update Password</button>
+          </div>
+          <div class="auth-msg" id="settingsMsg" style="text-align:left;"></div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Item</th><th>Rarity</th><th>Price</th><th>Stock Left</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="stock-table-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- ===== SOLD OUT ARCHIVE VIEW ===== -->
-      <section class="view hidden" id="view-soldout" data-view-root>
-        <div class="item-grid" id="grid-soldout"></div>
-      </section>
-
-      <!-- ===== SETTINGS VIEW ===== -->
-      <section class="view hidden" id="view-settings" data-view-root>
-        <div class="panel settings-card">
-          <div class="panel-head"><h2>Account Settings</h2></div>
-          <div class="settings-row">
-            <div class="settings-row-info"><h4>Signed in as</h4><p id="settings-username">&mdash;</p></div>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info"><h4>Change Password</h4><p>Update your admin password</p></div>
-            <button class="btn btn-ghost btn-sm" id="open-change-pw">Change</button>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info"><h4>Log Out</h4><p>End your current session</p></div>
-            <button class="btn btn-danger btn-sm" id="settings-logout-btn">Log Out</button>
-          </div>
-        </div>
-      </section>
+      </div>
 
     </div>
   </div>
 </div>
 
-<!-- ============================= MODALS ============================= -->
-<div id="modal-root"></div>
-<div id="toast-stack"></div>
+<!-- confirm delete modal -->
+<div id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Remove this skin?</h3>
+    <p id="modalBody">This will permanently delete the item from the marketplace.</p>
+    <div class="btn-row">
+      <button class="btn-sm primary" id="modalConfirm" style="background:linear-gradient(180deg,var(--danger),#7a231a);">Delete</button>
+      <button class="btn-sm ghost" id="modalCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
 
 <script>
-(function(){
+/* =========================================================
+   CONFIG
+========================================================= */
+const DB_URL = "https://dota-7c648-default-rtdb.firebaseio.com";
+const MAX_ATTEMPTS = 3;
+const LOCK_MS = 60000; // 60s lock after 3 failed attempts
 
-/* ============================================================
-   FIREBASE INIT
-   ============================================================ */
-const firebaseConfig = {
-  databaseURL: "https://dota-7c648-default-rtdb.firebaseio.com/"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const adminsRef = db.ref('admins');
-const itemsRef = db.ref('items');
-
-/* ============================================================
-   UTIL
-   ============================================================ */
-async function sha256(text){
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-function toast(msg, type){
-  const el = document.createElement('div');
-  el.className = 'toast' + (type ? ' ' + type : '');
-  el.textContent = msg;
-  document.getElementById('toast-stack').appendChild(el);
-  setTimeout(() => el.remove(), 3100);
-}
-function money(n){
-  n = Number(n) || 0;
-  return '$' + n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-}
-function escapeHtml(str){
-  const d = document.createElement('div');
-  d.textContent = str == null ? '' : String(str);
-  return d.innerHTML;
-}
-function placeArchSvg(){
-  return document.getElementById('tpl-logo').content.cloneNode(true);
-}
-document.querySelectorAll('.logo-slot').forEach(slot => slot.appendChild(placeArchSvg()));
-
-function fileToDataURL(file){
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/* ============================================================
-   STATE
-   ============================================================ */
-let currentAdmin = null;   // { key, username }
-let allItems = {};          // { id: {..item} }
-let currentView = 'dashboard';
-let editingItemId = null;
-
-/* ============================================================
-   AUTH: LOGIN / REGISTER
-   ============================================================ */
-const authError = document.getElementById('auth-error');
-function showAuthError(msg){
-  authError.textContent = msg;
-  authError.classList.add('show');
-}
-function clearAuthError(){
-  authError.classList.remove('show');
-  authError.textContent = '';
-}
-
-document.getElementById('show-register').addEventListener('click', () => {
-  clearAuthError();
-  document.getElementById('login-form').classList.add('hidden');
-  document.getElementById('register-form').classList.remove('hidden');
-});
-document.getElementById('show-login').addEventListener('click', () => {
-  clearAuthError();
-  document.getElementById('register-form').classList.add('hidden');
-  document.getElementById('login-form').classList.remove('hidden');
-});
-
-document.getElementById('register-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  clearAuthError();
-  const username = document.getElementById('reg-username').value.trim().toLowerCase();
-  const pw = document.getElementById('reg-password').value;
-  const pw2 = document.getElementById('reg-password2').value;
-  const btn = document.getElementById('register-submit-btn');
-
-  if(!/^[a-z0-9_\.]{3,24}$/.test(username)){
-    showAuthError('Username must be 3-24 characters: letters, numbers, underscore or dot only.');
-    return;
+/* =========================================================
+   AMBIENT EMBERS
+========================================================= */
+(function spawnEmbers(){
+  const wrap = document.getElementById('embers');
+  for(let i=0;i<26;i++){
+    const e = document.createElement('div');
+    e.className='ember';
+    e.style.left = Math.random()*100+'vw';
+    e.style.animationDuration = (6+Math.random()*8)+'s';
+    e.style.animationDelay = (Math.random()*8)+'s';
+    e.style.opacity = 0.3+Math.random()*0.5;
+    wrap.appendChild(e);
   }
-  if(pw !== pw2){
-    showAuthError('Passwords do not match.');
-    return;
-  }
-  btn.disabled = true; btn.textContent = 'Creating account...';
-  try{
-    const snap = await adminsRef.orderByChild('username').equalTo(username).once('value');
-    if(snap.exists()){
-      showAuthError('That username is already taken.');
-      btn.disabled = false; btn.textContent = 'Create Admin Account';
-      return;
-    }
-    const passwordHash = await sha256(pw);
-    const newRef = adminsRef.push();
-    await newRef.set({ username, passwordHash, createdAt: Date.now() });
-    currentAdmin = { key: newRef.key, username };
-    toast('Admin account created. Welcome, ' + username + '.', 'ok');
-    enterApp();
-  }catch(err){
-    showAuthError('Could not reach the database. ' + (err && err.message ? err.message : ''));
-    btn.disabled = false; btn.textContent = 'Create Admin Account';
-  }
-});
-
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  clearAuthError();
-  const username = document.getElementById('login-username').value.trim().toLowerCase();
-  const pw = document.getElementById('login-password').value;
-  const btn = document.getElementById('login-submit-btn');
-  btn.disabled = true; btn.textContent = 'Verifying...';
-  try{
-    const snap = await adminsRef.orderByChild('username').equalTo(username).once('value');
-    if(!snap.exists()){
-      showAuthError('No admin found with that username.');
-      btn.disabled = false; btn.textContent = 'Enter the Reliquary';
-      return;
-    }
-    let matchKey = null, matchVal = null;
-    snap.forEach(child => { matchKey = child.key; matchVal = child.val(); });
-    const passwordHash = await sha256(pw);
-    if(passwordHash !== matchVal.passwordHash){
-      showAuthError('Incorrect password.');
-      btn.disabled = false; btn.textContent = 'Enter the Reliquary';
-      return;
-    }
-    currentAdmin = { key: matchKey, username: matchVal.username };
-    toast('Welcome back, ' + matchVal.username + '.', 'ok');
-    enterApp();
-  }catch(err){
-    showAuthError('Could not reach the database. ' + (err && err.message ? err.message : ''));
-    btn.disabled = false; btn.textContent = 'Enter the Reliquary';
-  }
-});
-
-function enterApp(){
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('app-shell').classList.remove('hidden');
-  document.getElementById('admin-name-display').textContent = currentAdmin.username;
-  document.getElementById('admin-avatar').textContent = currentAdmin.username.charAt(0).toUpperCase();
-  document.getElementById('settings-username').textContent = currentAdmin.username;
-  startItemsListener();
-}
-function doLogout(){
-  currentAdmin = null;
-  document.getElementById('app-shell').classList.add('hidden');
-  document.getElementById('auth-screen').classList.remove('hidden');
-  document.getElementById('login-form').reset();
-  document.getElementById('register-form').reset();
-  document.getElementById('login-form').classList.remove('hidden');
-  document.getElementById('register-form').classList.add('hidden');
-  toast('Logged out.', 'ok');
-}
-document.getElementById('logout-btn').addEventListener('click', doLogout);
-document.getElementById('settings-logout-btn').addEventListener('click', doLogout);
-
-/* ============================================================
-   NAVIGATION
-   ============================================================ */
-const viewTitles = {
-  dashboard: ['Dashboard', 'Overview of the whole reliquary'],
-  immortal:  ['Immortal Skins', 'Top-tier relics currently listed'],
-  arcana:    ['Arcana Skins', 'Evolving hero-exclusive relics'],
-  add:       ['Add New Item', 'List a new skin on the marketplace'],
-  stock:     ['Manage Stock', 'Update quantities, price and status'],
-  soldout:   ['Sold Out Archive', 'Relics fully reclaimed by buyers'],
-  settings:  ['Account Settings', 'Manage your admin session']
-};
-
-function setView(view){
-  currentView = view;
-  document.querySelectorAll('[data-view-root]').forEach(v => v.classList.add('hidden'));
-  document.getElementById('view-' + view).classList.remove('hidden');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
-  document.getElementById('topbar-title').textContent = viewTitles[view][0];
-  document.getElementById('topbar-sub').textContent = viewTitles[view][1];
-  document.getElementById('sidebar').classList.remove('open');
-  renderAll();
-}
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', (e) => { e.preventDefault(); setView(item.dataset.view); });
-});
-document.getElementById('topbar-add-btn').addEventListener('click', () => setView('add'));
-document.getElementById('menu-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
-
-/* ============================================================
-   ITEMS: REALTIME LISTENER
-   ============================================================ */
-function startItemsListener(){
-  itemsRef.on('value', (snap) => {
-    allItems = snap.val() || {};
-    renderAll();
-  }, (err) => {
-    toast('Database error: ' + err.message, 'err');
-  });
-}
-
-function itemsArray(){
-  return Object.keys(allItems).map(id => ({ id, ...allItems[id] }));
-}
-function statusOf(item){
-  const stock = Number(item.stock) || 0;
-  if(stock <= 0) return 'out';
-  if(stock <= 3) return 'low';
-  return 'in';
-}
-function statusBadge(item){
-  const s = statusOf(item);
-  if(s === 'out') return '<span class="badge badge-out">Sold Out</span>';
-  if(s === 'low') return '<span class="badge badge-low">Dwindling &middot; ' + item.stock + ' left</span>';
-  return '<span class="badge badge-in">' + item.stock + ' left</span>';
-}
-function rarityBadge(type){
-  return type === 'immortal'
-    ? '<span class="badge badge-immortal">Immortal</span>'
-    : '<span class="badge badge-arcana">Arcana</span>';
-}
-
-/* ============================================================
-   RENDER: ALL
-   ============================================================ */
-function renderAll(){
-  if(!currentAdmin) return;
-  const items = itemsArray();
-  renderCounts(items);
-  if(currentView === 'dashboard') renderDashboard(items);
-  if(currentView === 'immortal') renderGrid('grid-immortal', items.filter(i => i.type === 'immortal'), gridSearchVal('immortal'));
-  if(currentView === 'arcana') renderGrid('grid-arcana', items.filter(i => i.type === 'arcana'), gridSearchVal('arcana'));
-  if(currentView === 'stock') renderStockTable(items);
-  if(currentView === 'soldout') renderGrid('grid-soldout', items.filter(i => statusOf(i) === 'out'), gridSearchVal('stock'), true);
-}
-
-function gridSearchVal(key){
-  const el = document.querySelector('[data-search="'+key+'"]');
-  return el ? el.value.trim().toLowerCase() : '';
-}
-
-function renderCounts(items){
-  document.getElementById('count-immortal').textContent = items.filter(i => i.type === 'immortal').length;
-  document.getElementById('count-arcana').textContent = items.filter(i => i.type === 'arcana').length;
-  document.getElementById('count-soldout').textContent = items.filter(i => statusOf(i) === 'out').length;
-}
-
-/* ---------------- Dashboard ---------------- */
-function renderDashboard(items){
-  const totalStock = items.reduce((s,i) => s + (statusOf(i) === 'out' ? 0 : Number(i.stock)||0), 0);
-  const soldOutCount = items.filter(i => statusOf(i) === 'out').length;
-  const vaultValue = items.reduce((s,i) => s + ((Number(i.price)||0) * (statusOf(i)==='out'?0:(Number(i.stock)||0))), 0);
-
-  document.getElementById('stat-total').textContent = items.length;
-  document.getElementById('stat-stock').textContent = totalStock;
-  document.getElementById('stat-soldout').textContent = soldOutCount;
-  document.getElementById('stat-value').textContent = money(vaultValue);
-
-  const lowStock = items.filter(i => statusOf(i) === 'low').sort((a,b) => (a.stock||0) - (b.stock||0)).slice(0,6);
-  const lowWrap = document.getElementById('dash-low-list');
-  lowWrap.innerHTML = lowStock.length ? lowStock.map(rowMini).join('') : emptyMiniRow('Nothing is running low right now.');
-
-  const recent = [...items].sort((a,b) => (b.createdAt||0) - (a.createdAt||0)).slice(0,6);
-  const recentWrap = document.getElementById('dash-recent-list');
-  recentWrap.innerHTML = recent.length ? recent.map(rowMini).join('') : emptyMiniRow('No relics listed yet.');
-}
-function emptyMiniRow(text){
-  return '<div style="padding:18px 0; color:var(--muted-dim); font-size:13px; text-align:center;">'+escapeHtml(text)+'</div>';
-}
-function rowMini(item){
-  const img = item.imageUrl ? '<img class="mini-thumb" src="'+item.imageUrl+'" alt="">' : '<div class="mini-thumb"></div>';
-  return '<div class="mini-row">'+img+
-    '<div class="mini-info"><div class="mini-name">'+escapeHtml(item.name)+'</div>'+
-    '<div class="mini-sub">'+escapeHtml(item.hero||'')+'</div></div>'+
-    statusBadge(item)+'</div>';
-}
-
-/* ---------------- Item Grid (Immortal / Arcana / Sold Out) ---------------- */
-function renderGrid(elId, items, search, isArchive){
-  const wrap = document.getElementById(elId);
-  let filtered = items;
-  if(search){
-    filtered = filtered.filter(i => (i.name||'').toLowerCase().includes(search) || (i.hero||'').toLowerCase().includes(search));
-  }
-  if(!filtered.length){
-    wrap.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">'+
-      '<svg width="46" height="46"><use href="#i-empty"/></svg>'+
-      '<h3>'+(isArchive ? 'The archive is empty' : 'No relics here yet')+'</h3>'+
-      '<p>'+(isArchive ? 'Items appear here once their stock reaches zero.' : 'Add your first item from the "Add New Item" section.')+'</p>'+
-      '</div>';
-    return;
-  }
-  wrap.innerHTML = filtered.map(item => cardHtml(item, isArchive)).join('');
-  wrap.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openItemModal(b.dataset.edit)));
-  wrap.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => confirmDelete(b.dataset.delete)));
-  wrap.querySelectorAll('[data-restock]').forEach(b => b.addEventListener('click', () => quickRestock(b.dataset.restock)));
-}
-
-function cardHtml(item, isArchive){
-  const s = statusOf(item);
-  const media = item.imageUrl
-    ? '<img src="'+item.imageUrl+'" alt="'+escapeHtml(item.name)+'">'
-    : '<div class="no-img">No image<br>provided</div>';
-  const rarityTagStyle = item.type === 'immortal'
-    ? 'background:rgba(201,162,75,0.16); color:var(--gold-bright); border:1px solid rgba(201,162,75,0.4);'
-    : 'background:rgba(139,42,50,0.16); color:#E39AA1; border:1px solid rgba(139,42,50,0.4);';
-  return '<div class="item-card">'+
-    '<div class="item-media">'+media+
-      '<span class="item-rarity-tag" style="'+rarityTagStyle+'">'+item.type+'</span>'+
-    '</div>'+
-    '<div class="item-body">'+
-      '<div class="item-hero">'+escapeHtml(item.hero||'&mdash;')+'</div>'+
-      '<div class="item-name">'+escapeHtml(item.name)+'</div>'+
-      '<div class="item-row"><div class="item-price">'+money(item.price)+'</div>'+statusBadge(item)+'</div>'+
-      '<div class="item-actions">'+
-        (isArchive
-          ? '<button class="btn btn-teal btn-sm" data-restock="'+item.id+'" style="flex:1">Restock</button>'
-          : '<button class="btn btn-ghost btn-sm" data-edit="'+item.id+'" style="flex:1"><svg width="12" height="12"><use href="#i-pencil"/></svg>&nbsp; Edit</button>')+
-        '<button class="btn btn-danger btn-sm" data-delete="'+item.id+'"><svg width="12" height="12"><use href="#i-trash"/></svg></button>'+
-      '</div>'+
-    '</div>'+
-  '</div>';
-}
-
-/* ---------------- Stock Table ---------------- */
-let stockFilter = 'all';
-document.querySelectorAll('[data-stockfilter]').forEach(chip => {
-  chip.addEventListener('click', () => {
-    stockFilter = chip.dataset.stockfilter;
-    document.querySelectorAll('[data-stockfilter]').forEach(c => c.classList.toggle('active', c === chip));
-    renderAll();
-  });
-});
-function renderStockTable(items){
-  const search = gridSearchVal('stock');
-  let filtered = items;
-  if(stockFilter !== 'all') filtered = filtered.filter(i => i.type === stockFilter);
-  if(search) filtered = filtered.filter(i => (i.name||'').toLowerCase().includes(search) || (i.hero||'').toLowerCase().includes(search));
-
-  const body = document.getElementById('stock-table-body');
-  if(!filtered.length){
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--muted-dim);">No matching items.</td></tr>';
-    return;
-  }
-  body.innerHTML = filtered.map(item => {
-    const img = item.imageUrl ? '<img src="'+item.imageUrl+'" alt="">' : '<img src="" alt="" style="opacity:0;">';
-    return '<tr>'+
-      '<td><div class="td-item">'+img+'<span>'+escapeHtml(item.name)+'</span></div></td>'+
-      '<td>'+rarityBadge(item.type)+'</td>'+
-      '<td>'+money(item.price)+'</td>'+
-      '<td><div class="stepper">'+
-        '<button data-step-down="'+item.id+'">&minus;</button>'+
-        '<span class="val">'+(Number(item.stock)||0)+'</span>'+
-        '<button data-step-up="'+item.id+'">+</button>'+
-      '</div></td>'+
-      '<td>'+statusBadge(item)+'</td>'+
-      '<td style="display:flex; gap:6px;">'+
-        '<button class="btn btn-ghost btn-sm" data-edit="'+item.id+'"><svg width="12" height="12"><use href="#i-pencil"/></svg></button>'+
-        '<button class="btn btn-danger btn-sm" data-delete="'+item.id+'"><svg width="12" height="12"><use href="#i-trash"/></svg></button>'+
-      '</td>'+
-    '</tr>';
-  }).join('');
-
-  body.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openItemModal(b.dataset.edit)));
-  body.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => confirmDelete(b.dataset.delete)));
-  body.querySelectorAll('[data-step-up]').forEach(b => b.addEventListener('click', () => stepStock(b.dataset.stepUp, 1)));
-  body.querySelectorAll('[data-step-down]').forEach(b => b.addEventListener('click', () => stepStock(b.dataset.stepDown, -1)));
-}
-function stepStock(id, delta){
-  const item = allItems[id];
-  if(!item) return;
-  const next = Math.max(0, (Number(item.stock)||0) + delta);
-  itemsRef.child(id).update({ stock: next, updatedAt: Date.now() });
-}
-function quickRestock(id){
-  const item = allItems[id];
-  if(!item) return;
-  const val = prompt('Restock "'+item.name+'" — enter new stock count:', '5');
-  if(val === null) return;
-  const num = Math.max(0, parseInt(val, 10) || 0);
-  itemsRef.child(id).update({ stock: num, updatedAt: Date.now() });
-  toast(item.name + ' restocked to ' + num + '.', 'ok');
-}
-
-document.querySelectorAll('[data-search]').forEach(inp => inp.addEventListener('input', renderAll));
-
-/* ============================================================
-   ADD ITEM FORM
-   ============================================================ */
-let addImageData = '';
-document.getElementById('f-image-url').addEventListener('input', (e) => {
-  addImageData = e.target.value.trim();
-  updatePreview('add-img-preview', addImageData);
-});
-document.getElementById('f-image-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  if(file.size > 1.5*1024*1024){
-    toast('Image too large — please use a file under 1.5MB or paste a URL instead.', 'err');
-    e.target.value = '';
-    return;
-  }
-  addImageData = await fileToDataURL(file);
-  document.getElementById('f-image-url').value = '';
-  updatePreview('add-img-preview', addImageData);
-});
-function updatePreview(elId, src){
-  const el = document.getElementById(elId);
-  el.innerHTML = src ? '<img src="'+src+'" alt="">' : '<span>No image selected</span>';
-}
-document.getElementById('add-reset-btn').addEventListener('click', () => {
-  addImageData = '';
-  setTimeout(() => updatePreview('add-img-preview', ''), 0);
-});
-
-document.getElementById('add-item-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('add-submit-btn');
-  const payload = {
-    name: document.getElementById('f-name').value.trim(),
-    hero: document.getElementById('f-hero').value.trim(),
-    type: document.getElementById('f-type').value,
-    price: parseFloat(document.getElementById('f-price').value) || 0,
-    stock: Math.max(0, parseInt(document.getElementById('f-stock').value, 10) || 0),
-    origin: document.getElementById('f-origin').value.trim(),
-    description: document.getElementById('f-desc').value.trim(),
-    imageUrl: addImageData || '',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    createdBy: currentAdmin.username
-  };
-  if(!payload.type){ toast('Please select a rarity.', 'err'); return; }
-  btn.disabled = true; btn.textContent = 'Adding...';
-  try{
-    await itemsRef.push(payload);
-    toast('"'+payload.name+'" added to the marketplace.', 'ok');
-    document.getElementById('add-item-form').reset();
-    addImageData = '';
-    updatePreview('add-img-preview', '');
-    setView(payload.type);
-  }catch(err){
-    toast('Failed to add item: ' + err.message, 'err');
-  }finally{
-    btn.disabled = false; btn.textContent = 'Add Item to Marketplace';
-  }
-});
-
-/* ============================================================
-   EDIT ITEM MODAL
-   ============================================================ */
-const modalRoot = document.getElementById('modal-root');
-
-function openItemModal(id){
-  const item = allItems[id];
-  if(!item) return;
-  editingItemId = id;
-  let editImageData = item.imageUrl || '';
-
-  modalRoot.innerHTML = `
-    <div class="modal-overlay" id="edit-overlay">
-      <div class="modal">
-        <div class="modal-head">
-          <h2>Edit Relic</h2>
-          <button class="modal-close" id="edit-close">&times;</button>
-        </div>
-        <form id="edit-item-form">
-          <div class="form-grid">
-            <div class="field"><label>Item Name</label><input type="text" id="e-name" value="${escapeHtml(item.name)}" required></div>
-            <div class="field"><label>Hero</label><input type="text" id="e-hero" value="${escapeHtml(item.hero||'')}" required></div>
-            <div class="field"><label>Rarity</label>
-              <select id="e-type" required>
-                <option value="immortal" ${item.type==='immortal'?'selected':''}>Immortal</option>
-                <option value="arcana" ${item.type==='arcana'?'selected':''}>Arcana</option>
-              </select>
-            </div>
-            <div class="field"><label>Price (USD)</label><input type="number" id="e-price" min="0" step="0.01" value="${Number(item.price)||0}" required></div>
-            <div class="field"><label>Units Left in Stock</label><input type="number" id="e-stock" min="0" step="1" value="${Number(item.stock)||0}" required></div>
-            <div class="field"><label>Origin / Set</label><input type="text" id="e-origin" value="${escapeHtml(item.origin||'')}"></div>
-            <div class="field full"><label>Description</label><textarea id="e-desc">${escapeHtml(item.description||'')}</textarea></div>
-            <div class="field full">
-              <label>Item Image</label>
-              <div class="img-input-row">
-                <input type="text" id="e-image-url" placeholder="Paste image URL, or upload a file &rarr;" value="${item.imageUrl && !item.imageUrl.startsWith('data:') ? escapeHtml(item.imageUrl) : ''}">
-                <label class="btn upload-btn" for="e-image-file">Upload File</label>
-                <input type="file" id="e-image-file" accept="image/*" class="hidden">
-              </div>
-              <div class="img-preview" id="edit-img-preview">${editImageData ? '<img src="'+editImageData+'" alt="">' : '<span>No image selected</span>'}</div>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-ghost" id="edit-cancel">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="edit-submit-btn">Save Changes</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('edit-close').addEventListener('click', closeModal);
-  document.getElementById('edit-cancel').addEventListener('click', closeModal);
-  document.getElementById('edit-overlay').addEventListener('click', (e) => { if(e.target.id === 'edit-overlay') closeModal(); });
-
-  document.getElementById('e-image-url').addEventListener('input', (e) => {
-    editImageData = e.target.value.trim();
-    updatePreview('edit-img-preview', editImageData);
-  });
-  document.getElementById('e-image-file').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
-    if(file.size > 1.5*1024*1024){
-      toast('Image too large — please use a file under 1.5MB or paste a URL instead.', 'err');
-      e.target.value = '';
-      return;
-    }
-    editImageData = await fileToDataURL(file);
-    document.getElementById('e-image-url').value = '';
-    updatePreview('edit-img-preview', editImageData);
-  });
-
-  document.getElementById('edit-item-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('edit-submit-btn');
-    btn.disabled = true; btn.textContent = 'Saving...';
-    const updates = {
-      name: document.getElementById('e-name').value.trim(),
-      hero: document.getElementById('e-hero').value.trim(),
-      type: document.getElementById('e-type').value,
-      price: parseFloat(document.getElementById('e-price').value) || 0,
-      stock: Math.max(0, parseInt(document.getElementById('e-stock').value, 10) || 0),
-      origin: document.getElementById('e-origin').value.trim(),
-      description: document.getElementById('e-desc').value.trim(),
-      imageUrl: editImageData || '',
-      updatedAt: Date.now()
-    };
-    try{
-      await itemsRef.child(editingItemId).update(updates);
-      toast('"'+updates.name+'" updated.', 'ok');
-      closeModal();
-    }catch(err){
-      toast('Failed to save: ' + err.message, 'err');
-      btn.disabled = false; btn.textContent = 'Save Changes';
-    }
-  });
-}
-
-function closeModal(){
-  modalRoot.innerHTML = '';
-  editingItemId = null;
-}
-
-/* ============================================================
-   DELETE CONFIRM
-   ============================================================ */
-function confirmDelete(id){
-  const item = allItems[id];
-  if(!item) return;
-  modalRoot.innerHTML = `
-    <div class="modal-overlay" id="del-overlay">
-      <div class="modal modal-sm">
-        <div class="modal-head" style="justify-content:center;"><h2>Remove This Relic?</h2></div>
-        <p>"${escapeHtml(item.name)}" will be permanently removed from the marketplace. This cannot be undone.</p>
-        <div class="form-actions">
-          <button class="btn btn-ghost" id="del-cancel">Cancel</button>
-          <button class="btn btn-danger" id="del-confirm">Delete Permanently</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.getElementById('del-cancel').addEventListener('click', closeModal);
-  document.getElementById('del-overlay').addEventListener('click', (e) => { if(e.target.id === 'del-overlay') closeModal(); });
-  document.getElementById('del-confirm').addEventListener('click', async () => {
-    try{
-      await itemsRef.child(id).remove();
-      toast('"'+item.name+'" deleted.', 'ok');
-      closeModal();
-    }catch(err){
-      toast('Failed to delete: ' + err.message, 'err');
-    }
-  });
-}
-
-/* ============================================================
-   CHANGE PASSWORD
-   ============================================================ */
-document.getElementById('open-change-pw').addEventListener('click', () => {
-  modalRoot.innerHTML = `
-    <div class="modal-overlay" id="pw-overlay">
-      <div class="modal modal-sm">
-        <div class="modal-head" style="justify-content:center;"><h2>Change Password</h2></div>
-        <form id="pw-form" style="text-align:left;">
-          <div class="field"><label>Current Password</label><input type="password" id="pw-current" required></div>
-          <div class="field"><label>New Password</label><input type="password" id="pw-new" minlength="6" required></div>
-          <div class="field"><label>Confirm New Password</label><input type="password" id="pw-confirm" minlength="6" required></div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-ghost" id="pw-cancel">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="pw-submit">Update Password</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-  document.getElementById('pw-cancel').addEventListener('click', closeModal);
-  document.getElementById('pw-overlay').addEventListener('click', (e) => { if(e.target.id === 'pw-overlay') closeModal(); });
-  document.getElementById('pw-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('pw-submit');
-    const cur = document.getElementById('pw-current').value;
-    const next = document.getElementById('pw-new').value;
-    const confirm2 = document.getElementById('pw-confirm').value;
-    if(next !== confirm2){ toast('New passwords do not match.', 'err'); return; }
-    btn.disabled = true; btn.textContent = 'Updating...';
-    try{
-      const snap = await adminsRef.child(currentAdmin.key).once('value');
-      const data = snap.val();
-      const curHash = await sha256(cur);
-      if(curHash !== data.passwordHash){
-        toast('Current password is incorrect.', 'err');
-        btn.disabled = false; btn.textContent = 'Update Password';
-        return;
-      }
-      const newHash = await sha256(next);
-      await adminsRef.child(currentAdmin.key).update({ passwordHash: newHash });
-      toast('Password updated.', 'ok');
-      closeModal();
-    }catch(err){
-      toast('Failed to update password: ' + err.message, 'err');
-      btn.disabled = false; btn.textContent = 'Update Password';
-    }
-  });
-});
-
-/* ============================================================
-   ESC to close modal
-   ============================================================ */
-document.addEventListener('keydown', (e) => {
-  if(e.key === 'Escape' && modalRoot.innerHTML.trim() !== '') closeModal();
-});
-
 })();
+
+/* =========================================================
+   SIMPLE FIREBASE REST HELPERS
+========================================================= */
+async function dbGet(path){
+  const res = await fetch(`${DB_URL}/${path}.json`);
+  if(!res.ok) throw new Error('DB read failed ('+res.status+')');
+  return res.json();
+}
+async function dbSet(path, data){
+  const res = await fetch(`${DB_URL}/${path}.json`, {
+    method:'PUT', body: JSON.stringify(data)
+  });
+  if(!res.ok) throw new Error('DB write failed ('+res.status+')');
+  return res.json();
+}
+async function dbPatch(path, data){
+  const res = await fetch(`${DB_URL}/${path}.json`, {
+    method:'PATCH', body: JSON.stringify(data)
+  });
+  if(!res.ok) throw new Error('DB update failed ('+res.status+')');
+  return res.json();
+}
+async function dbPush(path, data){
+  const res = await fetch(`${DB_URL}/${path}.json`, {
+    method:'POST', body: JSON.stringify(data)
+  });
+  if(!res.ok) throw new Error('DB push failed ('+res.status+')');
+  return res.json();
+}
+async function dbDelete(path){
+  const res = await fetch(`${DB_URL}/${path}.json`, { method:'DELETE' });
+  if(!res.ok) throw new Error('DB delete failed ('+res.status+')');
+  return res.json();
+}
+
+/* naive obfuscation — NOT real security, demo only */
+function encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function decode(str){ try{ return decodeURIComponent(escape(atob(str))); }catch(e){ return ''; } }
+
+/* =========================================================
+   TOAST
+========================================================= */
+function toast(msg, isErr){
+  const t = document.createElement('div');
+  t.className = 'toast-item' + (isErr?' err':'');
+  t.textContent = msg;
+  document.getElementById('toast').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3200);
+}
+
+/* =========================================================
+   HERO ICON THEME
+========================================================= */
+const HERO_THEME = {
+  "Windranger":      { grad:"linear-gradient(135deg,#1c5c3a,#0d2e1c)", initial:"W" },
+  "Shadow Fiend":     { grad:"linear-gradient(135deg,#5a1030,#210711)", initial:"SF" },
+  "Earthshaker":      { grad:"linear-gradient(135deg,#7a4a1a,#2e1a08)", initial:"ES" },
+  "Spectre":          { grad:"linear-gradient(135deg,#3a2065,#150a2e)", initial:"SP" },
+  "Faceless Void":     { grad:"linear-gradient(135deg,#123a6b,#081a30)", initial:"FV" },
+  "Wraith King":      { grad:"linear-gradient(135deg,#5c531c,#26210a)", initial:"WK" },
+  "Drow Ranger":      { grad:"linear-gradient(135deg,#0e4a5c,#061e26)", initial:"DR" },
+};
+function heroTheme(hero){
+  return HERO_THEME[hero] || { grad:"linear-gradient(135deg,#333,#111)", initial: hero ? hero[0] : "?" };
+}
+
+/* =========================================================
+   SAMPLE / SEED DATA
+========================================================= */
+const SEED_SKINS = [
+  { hero:"Windranger",     name:"Sonic Scourge",           type:"Arcana",   price:34.99, stock:5,  sold:12 },
+  { hero:"Shadow Fiend",    name:"Demon Eater's Wrath",     type:"Immortal", price:24.99, stock:0,  sold:30 },
+  { hero:"Earthshaker",     name:"Stonehall Warbringer",    type:"Immortal", price:19.99, stock:8,  sold:14 },
+  { hero:"Spectre",         name:"Bloodmoon Reaper",        type:"Arcana",   price:39.99, stock:3,  sold:21 },
+  { hero:"Faceless Void",    name:"Continuum Anomaly",       type:"Immortal", price:22.99, stock:0,  sold:18 },
+  { hero:"Wraith King",     name:"Skeleton Overlord's Crown",type:"Immortal", price:17.99, stock:12, sold:9 },
+  { hero:"Drow Ranger",     name:"Frostbound Huntress",     type:"Immortal", price:21.99, stock:6,  sold:11 },
+];
+const SEED_SALES = [
+  { buyer:"ShadowHunter99",   skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:34.99, date:"2026-08-02" },
+  { buyer:"PudgeMain2024",    skin:"Bloodmoon Reaper", hero:"Spectre",    type:"Arcana", amount:39.99, date:"2026-08-05" },
+  { buyer:"ArcanaCollectorPH",skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:34.99, date:"2026-08-11" },
+  { buyer:"IloiloGamerX",     skin:"Bloodmoon Reaper", hero:"Spectre",    type:"Arcana", amount:39.99, date:"2026-08-19" },
+  { buyer:"NightStalkerFan",  skin:"Sonic Scourge",    hero:"Windranger", type:"Arcana", amount:34.99, date:"2026-08-27" },
+];
+
+/* =========================================================
+   STATE
+========================================================= */
+let CURRENT_ADMIN = null;
+let SKINS = {};
+let SALES = {};
+
+/* =========================================================
+   AUTH FLOW
+========================================================= */
+const authScreen = document.getElementById('authScreen');
+const appEl = document.getElementById('app');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const loginMsg = document.getElementById('loginMsg');
+const regMsg = document.getElementById('regMsg');
+const authTitle = document.getElementById('authTitle');
+const rulesNote = document.getElementById('rulesNote');
+
+document.getElementById('showRegister').onclick = ()=>{
+  loginForm.style.display='none'; registerForm.style.display='block';
+  authTitle.textContent = 'REGISTER ADMIN';
+};
+document.getElementById('showLogin').onclick = ()=>{
+  registerForm.style.display='none'; loginForm.style.display='block';
+  authTitle.textContent = 'ADMIN ACCESS';
+};
+
+function getAttempts(){
+  return JSON.parse(localStorage.getItem('d2m_attempts') || '{"count":0,"lockUntil":0}');
+}
+function setAttempts(obj){ localStorage.setItem('d2m_attempts', JSON.stringify(obj)); }
+
+function renderAttemptDots(){
+  const state = getAttempts();
+  document.querySelectorAll('.attempt-dot').forEach((dot,i)=>{
+    dot.classList.toggle('used', i < state.count);
+  });
+  const remaining = MAX_ATTEMPTS - state.count;
+  const now = Date.now();
+  if(state.lockUntil && state.lockUntil > now){
+    const secs = Math.ceil((state.lockUntil - now)/1000);
+    loginMsg.className = 'auth-msg err';
+    loginMsg.textContent = `Too many failed attempts. Locked for ${secs}s.`;
+    document.getElementById('loginBtn').disabled = true;
+  } else if(state.lockUntil && state.lockUntil <= now){
+    setAttempts({count:0, lockUntil:0});
+    document.getElementById('loginBtn').disabled = false;
+    loginMsg.textContent='';
+  } else {
+    document.getElementById('loginBtn').disabled = false;
+  }
+}
+renderAttemptDots();
+setInterval(renderAttemptDots, 1000);
+
+async function checkAdminExists(){
+  try{
+    const admin = await dbGet('admin');
+    if(!admin){
+      loginForm.style.display='none';
+      registerForm.style.display='block';
+      authTitle.textContent = 'REGISTER FIRST ADMIN';
+    }
+  }catch(e){
+    rulesNote.classList.add('show');
+  }
+}
+checkAdminExists();
+
+registerForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const user = document.getElementById('regUser').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  regMsg.className='auth-msg';
+  if(pass !== pass2){
+    regMsg.className='auth-msg err'; regMsg.textContent='Passwords do not match.'; return;
+  }
+  try{
+    await dbSet('admin', { username:user, password: encode(pass) });
+    regMsg.className='auth-msg ok'; regMsg.textContent='Admin created! You can log in now.';
+    setTimeout(()=>{
+      registerForm.style.display='none'; loginForm.style.display='block';
+      authTitle.textContent='ADMIN ACCESS';
+      document.getElementById('loginUser').value = user;
+    }, 900);
+  }catch(err){
+    regMsg.className='auth-msg err'; regMsg.textContent='Could not save admin. Check Firebase rules.';
+    rulesNote.classList.add('show');
+  }
+});
+
+loginForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const state = getAttempts();
+  const now = Date.now();
+  if(state.lockUntil && state.lockUntil > now){ renderAttemptDots(); return; }
+
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  loginMsg.className='auth-msg';
+  loginMsg.textContent='Verifying...';
+
+  try{
+    const admin = await dbGet('admin');
+    if(!admin){
+      loginMsg.className='auth-msg err'; loginMsg.textContent='No admin registered yet.'; return;
+    }
+    const ok = (admin.username === user) && (decode(admin.password) === pass);
+    if(ok){
+      setAttempts({count:0, lockUntil:0});
+      CURRENT_ADMIN = admin.username;
+      loginMsg.className='auth-msg ok'; loginMsg.textContent='Access granted.';
+      setTimeout(enterApp, 350);
+    } else {
+      const newCount = state.count + 1;
+      if(newCount >= MAX_ATTEMPTS){
+        setAttempts({count:newCount, lockUntil: Date.now() + LOCK_MS});
+      } else {
+        setAttempts({count:newCount, lockUntil:0});
+      }
+      renderAttemptDots();
+      loginMsg.className='auth-msg err';
+      const left = MAX_ATTEMPTS - newCount;
+      loginMsg.textContent = left > 0 ? `Incorrect credentials. ${left} attempt(s) left.` : 'Incorrect credentials. Account locked.';
+    }
+  }catch(err){
+    loginMsg.className='auth-msg err'; loginMsg.textContent='Connection to database failed.';
+    rulesNote.classList.add('show');
+  }
+});
+
+document.getElementById('logoutBtn').onclick = ()=>{
+  CURRENT_ADMIN = null;
+  appEl.classList.remove('active');
+  authScreen.style.display='flex';
+  loginForm.reset();
+};
+
+/* =========================================================
+   ENTER APP / SEED / LOAD
+========================================================= */
+async function enterApp(){
+  authScreen.style.display='none';
+  appEl.classList.add('active');
+  document.getElementById('adminNameChip').textContent = CURRENT_ADMIN;
+  document.getElementById('adminNameTop').textContent = CURRENT_ADMIN;
+  document.getElementById('settingsUser').value = CURRENT_ADMIN;
+
+  await ensureSeedData();
+  await loadAll();
+}
+
+async function ensureSeedData(){
+  try{
+    const skins = await dbGet('skins');
+    if(!skins){
+      const obj = {};
+      SEED_SKINS.forEach((s,i)=>{ obj['seed'+i] = s; });
+      await dbSet('skins', obj);
+    }
+    const sales = await dbGet('sales');
+    if(!sales){
+      const obj = {};
+      SEED_SALES.forEach((s,i)=>{ obj['seed'+i] = s; });
+      await dbSet('sales', obj);
+    }
+  }catch(e){
+    toast('Could not seed sample data — check Firebase rules.', true);
+  }
+}
+
+async function loadAll(){
+  try{
+    SKINS = await dbGet('skins') || {};
+    SALES = await dbGet('sales') || {};
+  }catch(e){
+    toast('Failed to load data from Firebase.', true);
+    SKINS = {}; SALES = {};
+  }
+  renderDashboard();
+  renderSkinGrid('Arcana','arcanaGrid','arcanaCount');
+  renderSkinGrid('Immortal','immortalGrid','immortalCount');
+  renderInventory();
+  renderSales();
+}
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+const navItems = document.querySelectorAll('.nav-item');
+const views = document.querySelectorAll('.view');
+const titles = {
+  dashboard:{t:'Dashboard', s:'Overview of the marketplace'},
+  arcanas:{t:'Arcana Collection', s:'Manage arcana-tier hero skins'},
+  immortals:{t:'Immortal Collection', s:'Manage immortal-tier hero skins'},
+  inventory:{t:'Inventory Status', s:'Stock levels and sold-out items'},
+  sales:{t:'Buyer Records', s:'Who purchased which arcana or immortal'},
+  additem:{t:'Add New Skin', s:'Create a new marketplace listing'},
+  settings:{t:'Account Settings', s:'Manage your admin credentials'},
+};
+navItems.forEach(item=>{
+  item.addEventListener('click', ()=>{
+    navItems.forEach(n=>n.classList.remove('active'));
+    item.classList.add('active');
+    const v = item.dataset.view;
+    views.forEach(vw=>vw.classList.remove('active'));
+    document.getElementById('view-'+v).classList.add('active');
+    document.getElementById('viewTitle').textContent = titles[v].t;
+    document.getElementById('viewSub').textContent = titles[v].s;
+    if(v==='additem') resetSkinForm();
+    document.getElementById('sidebar').classList.remove('open');
+  });
+});
+document.getElementById('menuToggle').onclick = ()=> document.getElementById('sidebar').classList.toggle('open');
+
+/* =========================================================
+   RENDER: DASHBOARD
+========================================================= */
+function renderDashboard(){
+  const list = Object.values(SKINS);
+  const totalSkins = list.length;
+  const totalStock = list.reduce((a,s)=>a+Number(s.stock||0),0);
+  const soldOut = list.filter(s=>Number(s.stock||0)===0).length;
+  const totalSold = list.reduce((a,s)=>a+Number(s.sold||0),0);
+  const revenue = Object.values(SALES).reduce((a,s)=>a+Number(s.amount||0),0);
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card"><div class="label">TOTAL LISTINGS</div><div class="value">${totalSkins}</div></div>
+    <div class="stat-card"><div class="label">UNITS IN STOCK</div><div class="value accent-ok">${totalStock}</div></div>
+    <div class="stat-card"><div class="label">SOLD OUT ITEMS</div><div class="value accent-blood">${soldOut}</div></div>
+    <div class="stat-card"><div class="label">TOTAL UNITS SOLD</div><div class="value accent-gold">${totalSold}</div></div>
+    <div class="stat-card"><div class="label">BUYER REVENUE</div><div class="value accent-gold">$${revenue.toFixed(2)}</div></div>
+  `;
+
+  const salesArr = Object.entries(SALES).sort((a,b)=> (b[1].date||'').localeCompare(a[1].date||'')).slice(0,6);
+  document.getElementById('recentSalesTable').innerHTML = salesArr.length ? `
+    <table>
+      <thead><tr><th>Buyer</th><th>Skin</th><th>Hero</th><th>Type</th><th>Amount</th><th>Date</th></tr></thead>
+      <tbody>
+        ${salesArr.map(([id,s])=>`
+          <tr>
+            <td>${s.buyer}</td><td>${s.skin}</td><td>${s.hero}</td>
+            <td><span class="pill ${s.type.toLowerCase()}">${s.type}</span></td>
+            <td>$${Number(s.amount).toFixed(2)}</td><td>${s.date}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>` : `<div class="empty-state"><div class="ico">◆</div>No buyer activity yet.</div>`;
+}
+
+/* =========================================================
+   RENDER: SKIN GRIDS (Arcana / Immortal)
+========================================================= */
+function renderSkinGrid(type, gridId, countId){
+  const entries = Object.entries(SKINS).filter(([id,s])=>s.type===type);
+  document.getElementById(countId).textContent = `(${entries.length})`;
+  const grid = document.getElementById(gridId);
+  if(!entries.length){
+    grid.innerHTML = `<div class="empty-state"><div class="ico">✦</div>No ${type} skins listed yet.</div>`;
+    return;
+  }
+  grid.innerHTML = entries.map(([id,s])=>{
+    const theme = heroTheme(s.hero);
+    const stock = Number(s.stock||0);
+    const soldOut = stock===0;
+    const stockClass = soldOut ? 'zero' : (stock<=3 ? 'low' : '');
+    return `
+    <div class="skin-card ${soldOut?'soldout':''}">
+      <div class="skin-art" style="background:${theme.grad};">
+        <span class="rarity-tag ${s.type.toLowerCase()}">${s.type}</span>
+        ${soldOut ? `<span class="soldout-badge">SOLD OUT</span>` : ''}
+        <span>${theme.initial}</span>
+      </div>
+      <div class="skin-body">
+        <div class="skin-hero">${s.hero.toUpperCase()}</div>
+        <div class="skin-name">${s.name}</div>
+        <div class="skin-meta">
+          <span class="skin-price">$${Number(s.price).toFixed(2)}</span>
+          <span class="skin-stock ${stockClass}">${soldOut?'0 left':(stock+' left')}</span>
+        </div>
+        <div class="skin-actions">
+          <button class="act-edit" onclick="editSkin('${id}')">Edit</button>
+          <button class="act-sell" onclick="recordSale('${id}')" ${soldOut?'disabled':''}>Sell 1</button>
+          <button class="act-del" onclick="confirmDeleteSkin('${id}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* =========================================================
+   RENDER: INVENTORY
+========================================================= */
+function renderInventory(){
+  const entries = Object.entries(SKINS);
+  const wrap = document.getElementById('inventoryTable');
+  if(!entries.length){ wrap.innerHTML = `<div class="empty-state"><div class="ico">▤</div>No inventory yet.</div>`; return; }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Hero</th><th>Skin</th><th>Type</th><th>Price</th><th>Stock Left</th><th>Sold</th><th>Status</th></tr></thead>
+      <tbody>
+        ${entries.map(([id,s])=>{
+          const stock = Number(s.stock||0);
+          const status = stock===0 ? '<span class="pill immortal">SOLD OUT</span>' : (stock<=3 ? '<span class="pill arcana">LOW STOCK</span>' : '<span class="pill" style="background:rgba(74,138,90,0.15);color:#4a8a5a;">IN STOCK</span>');
+          return `<tr><td>${s.hero}</td><td>${s.name}</td><td><span class="pill ${s.type.toLowerCase()}">${s.type}</span></td><td>$${Number(s.price).toFixed(2)}</td><td>${stock}</td><td>${s.sold||0}</td><td>${status}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* =========================================================
+   RENDER: SALES
+========================================================= */
+function renderSales(){
+  const entries = Object.entries(SALES).sort((a,b)=> (b[1].date||'').localeCompare(a[1].date||''));
+  document.getElementById('salesCount').textContent = `(${entries.length})`;
+  const wrap = document.getElementById('salesTable');
+  if(!entries.length){ wrap.innerHTML = `<div class="empty-state"><div class="ico">⌘</div>No purchases recorded yet.</div>`; return; }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Buyer</th><th>Skin</th><th>Hero</th><th>Type</th><th>Amount</th><th>Date</th></tr></thead>
+      <tbody>
+        ${entries.map(([id,s])=>`
+          <tr>
+            <td>${s.buyer}</td><td>${s.skin}</td><td>${s.hero}</td>
+            <td><span class="pill ${s.type.toLowerCase()}">${s.type}</span></td>
+            <td>$${Number(s.amount).toFixed(2)}</td><td>${s.date}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* =========================================================
+   CRUD: SKINS
+========================================================= */
+const skinForm = document.getElementById('skinForm');
+const skinCancelBtn = document.getElementById('skinCancelBtn');
+
+function resetSkinForm(){
+  skinForm.reset();
+  document.getElementById('skinId').value='';
+  document.getElementById('formTitle').textContent = 'Add New Skin';
+  document.getElementById('skinSubmitBtn').textContent = 'Save Skin';
+  skinCancelBtn.style.display='none';
+}
+skinCancelBtn.onclick = resetSkinForm;
+
+window.editSkin = function(id){
+  const s = SKINS[id];
+  if(!s) return;
+  document.getElementById('skinId').value = id;
+  document.getElementById('skinHero').value = s.hero;
+  document.getElementById('skinName').value = s.name;
+  document.getElementById('skinType').value = s.type;
+  document.getElementById('skinPrice').value = s.price;
+  document.getElementById('skinStock').value = s.stock;
+  document.getElementById('formTitle').textContent = 'Edit Skin';
+  document.getElementById('skinSubmitBtn').textContent = 'Update Skin';
+  skinCancelBtn.style.display='inline-flex';
+
+  navItems.forEach(n=>n.classList.remove('active'));
+  document.querySelector('.nav-item[data-view="additem"]').classList.add('active');
+  views.forEach(vw=>vw.classList.remove('active'));
+  document.getElementById('view-additem').classList.add('active');
+  document.getElementById('viewTitle').textContent = 'Add New Skin';
+  document.getElementById('viewSub').textContent = 'Create a new marketplace listing';
+};
+
+skinForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const id = document.getElementById('skinId').value;
+  const data = {
+    hero: document.getElementById('skinHero').value,
+    name: document.getElementById('skinName').value.trim(),
+    type: document.getElementById('skinType').value,
+    price: parseFloat(document.getElementById('skinPrice').value),
+    stock: parseInt(document.getElementById('skinStock').value,10),
+    sold: id && SKINS[id] ? (SKINS[id].sold||0) : 0,
+  };
+  try{
+    if(id){
+      await dbSet('skins/'+id, data);
+      toast('Skin updated.');
+    } else {
+      await dbPush('skins', data);
+      toast('New skin added.');
+    }
+    resetSkinForm();
+    await loadAll();
+  }catch(err){
+    toast('Save failed — check Firebase rules.', true);
+  }
+});
+
+window.confirmDeleteSkin = function(id){
+  openModal('Remove this skin?', `Delete "${SKINS[id]?.name}" permanently from the marketplace?`, async ()=>{
+    try{
+      await dbDelete('skins/'+id);
+      toast('Skin deleted.');
+      await loadAll();
+    }catch(err){ toast('Delete failed.', true); }
+  });
+};
+
+/* record a manual sale (decrement stock, increment sold, add a buyer entry) */
+window.recordSale = async function(id){
+  const s = SKINS[id];
+  if(!s || Number(s.stock||0)<=0) return;
+  const buyerNames = ['MidLaneKing','RadiantRusher','DireDefender','CourierCollector','RoshanRaider','GankSquadPH'];
+  const buyer = buyerNames[Math.floor(Math.random()*buyerNames.length)] + Math.floor(Math.random()*90+10);
+  try{
+    await dbPatch('skins/'+id, { stock: Number(s.stock)-1, sold:(Number(s.sold||0)+1) });
+    await dbPush('sales', {
+      buyer, skin:s.name, hero:s.hero, type:s.type, amount:Number(s.price),
+      date: new Date().toISOString().slice(0,10)
+    });
+    toast(`Sold to ${buyer}.`);
+    await loadAll();
+  }catch(err){ toast('Could not record sale.', true); }
+};
+
+/* =========================================================
+   MODAL
+========================================================= */
+const modalOverlay = document.getElementById('modalOverlay');
+let modalAction = null;
+function openModal(title, body, onConfirm){
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent = body;
+  modalAction = onConfirm;
+  modalOverlay.classList.add('active');
+}
+document.getElementById('modalCancel').onclick = ()=>{ modalOverlay.classList.remove('active'); modalAction=null; };
+document.getElementById('modalConfirm').onclick = ()=>{
+  if(modalAction) modalAction();
+  modalOverlay.classList.remove('active');
+};
+
+/* =========================================================
+   SETTINGS: change password
+========================================================= */
+document.getElementById('savePassBtn').onclick = async ()=>{
+  const np = document.getElementById('settingsNewPass').value;
+  const msg = document.getElementById('settingsMsg');
+  if(!np || np.length<6){ msg.className='auth-msg err'; msg.textContent='Password must be at least 6 characters.'; return; }
+  try{
+    await dbPatch('admin', { password: encode(np) });
+    msg.className='auth-msg ok'; msg.textContent='Password updated successfully.';
+    document.getElementById('settingsNewPass').value='';
+  }catch(err){
+    msg.className='auth-msg err'; msg.textContent='Update failed — check Firebase rules.';
+  }
+};
 </script>
 </body>
 </html>
