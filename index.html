@@ -3,1149 +3,1373 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ancient Cache — Dota 2 Arcana &amp; Persona Marketplace</title>
+<title>Reliquary &mdash; Dota 2 Skin Marketplace Admin</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
 <style>
-/* =========================================================
-   ANCIENT CACHE — design tokens
-   bg-void   #0b0908   near-black basalt
-   bg-panel  #17130f   charred wood panel
-   bg-raise  #201a14   raised card
-   dire      #8f1f1a   dire blood red
-   dire-br   #c23b2f   bright dire accent
-   radiant   #4c6b2e   radiant moss (sparing)
-   gold      #b9945a   aged bronze-gold
-   gold-br   #e8c581   bright gold (hover/active)
-   arcana    #d99a2b   arcana rarity amber
-   persona   #3f9e93   persona rarity teal
-   text      #ece4d3   parchment text
-   text-dim  #9a8f7d   dim parchment
-   ========================================================= */
+/* ============================= TOKENS ============================= */
 :root{
-  --bg-void:#0b0908;
-  --bg-panel:#17130f;
-  --bg-raise:#211a14;
-  --bg-raise2:#2a2119;
-  --dire:#8f1f1a;
-  --dire-br:#c23b2f;
-  --radiant:#4c6b2e;
-  --gold:#b9945a;
-  --gold-br:#e8c581;
-  --arcana:#d99a2b;
-  --persona:#3f9e93;
-  --text:#ece4d3;
-  --text-dim:#9a8f7d;
-  --line:rgba(185,148,90,0.22);
-  --shadow:0 10px 30px rgba(0,0,0,0.55);
-  --font-display:'Cinzel',serif;
-  --font-ui:'Oswald',sans-serif;
-  --font-body:'Inter',sans-serif;
+  --void:#0B0908;
+  --panel:#171210;
+  --panel-raised:#211A16;
+  --panel-raised-2:#2A2119;
+  --bronze-line:#3A2E22;
+  --bronze-line-soft:#2A2119;
+  --blood:#8B2A32;
+  --blood-bright:#B33944;
+  --gold:#C9A24B;
+  --gold-bright:#E8C468;
+  --teal:#4F9187;
+  --teal-bright:#66B0A4;
+  --parchment:#E9E2D3;
+  --muted:#9A8F7E;
+  --muted-dim:#6E6457;
+  --danger:#B33944;
+  --radius-s:4px;
+  --radius-m:8px;
+  --radius-l:14px;
+  --shadow-deep: 0 20px 50px rgba(0,0,0,0.55);
+  --font-display:'Cinzel', serif;
+  --font-body:'Barlow Semi Condensed', sans-serif;
 }
+
 *{box-sizing:border-box; margin:0; padding:0;}
 html,body{height:100%;}
 body{
-  font-family:var(--font-body);
-  color:var(--text);
   background:
-    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(143,31,26,0.20), transparent 60%),
-    repeating-linear-gradient(135deg, rgba(185,148,90,0.025) 0px, rgba(185,148,90,0.025) 1px, transparent 1px, transparent 26px),
-    var(--bg-void);
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(139,42,50,0.16), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 90% 10%, rgba(201,162,75,0.08), transparent 55%),
+    var(--void);
+  color:var(--parchment);
+  font-family:var(--font-body);
+  font-size:16px;
+  -webkit-font-smoothing:antialiased;
   min-height:100vh;
   overflow-x:hidden;
 }
-a{color:inherit;}
-button{font-family:var(--font-ui); cursor:pointer; border:none; background:none; color:inherit;}
-input,select,textarea{font-family:var(--font-body); color:var(--text); background:var(--bg-raise); border:1px solid var(--line); border-radius:2px; padding:11px 13px; font-size:14px; outline:none; transition:border-color .15s, box-shadow .15s;}
-input:focus,select:focus,textarea:focus{border-color:var(--gold); box-shadow:0 0 0 3px rgba(185,148,90,0.15);}
-::selection{background:var(--dire); color:#fff;}
-.hidden{display:none !important;}
-.eyebrow{font-family:var(--font-ui); letter-spacing:.22em; text-transform:uppercase; font-size:11px; color:var(--gold); font-weight:600;}
-
-/* clipped chamfer corner mixin — the signature shape used across cards, panels, buttons */
-.chamfer{ clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%); }
-.chamfer-sm{ clip-path: polygon(0 7px, 7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%); }
-
-/* =============== LOADING SCREEN =============== */
-#loadingScreen{
-  position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px;
-  background:var(--bg-void);
-}
-.rune-spinner{ width:64px; height:64px; border-radius:50%; border:3px solid rgba(185,148,90,0.2); border-top-color:var(--gold-br); border-right-color:var(--dire-br); animation:spin 1.1s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-#loadingScreen p{font-family:var(--font-ui); letter-spacing:.15em; text-transform:uppercase; color:var(--text-dim); font-size:13px;}
-
-/* =============== TOASTS =============== */
-#toastStack{position:fixed; top:20px; right:20px; z-index:8000; display:flex; flex-direction:column; gap:10px; max-width:340px;}
-.toast{
-  background:linear-gradient(160deg,var(--bg-raise2),var(--bg-raise));
-  border:1px solid var(--line); border-left:3px solid var(--gold-br);
-  padding:13px 16px; font-size:13.5px; box-shadow:var(--shadow); animation:toastIn .25s ease;
-}
-.toast.err{border-left-color:var(--dire-br);}
-.toast.ok{border-left-color:var(--radiant);}
-@keyframes toastIn{from{opacity:0; transform:translateX(30px);} to{opacity:1; transform:translateX(0);}}
-
-/* =============== AUTH SCREEN =============== */
-#authScreen{min-height:100vh; display:grid; grid-template-columns:1.1fr 1fr;}
-@media (max-width:860px){#authScreen{grid-template-columns:1fr;}}
-.auth-hero{
-  position:relative; padding:64px 56px; display:flex; flex-direction:column; justify-content:space-between;
-  background:
-    linear-gradient(180deg, rgba(11,9,8,0.35), rgba(11,9,8,0.92)),
-    radial-gradient(circle at 30% 20%, rgba(194,59,47,0.35), transparent 45%),
-    radial-gradient(circle at 80% 80%, rgba(76,107,46,0.18), transparent 50%),
-    var(--bg-panel);
-  border-right:1px solid var(--line);
-  overflow:hidden;
-}
-@media (max-width:860px){.auth-hero{display:none;}}
-.auth-hero::before{
-  content:""; position:absolute; inset:0; opacity:.5; pointer-events:none;
-  background-image: repeating-conic-gradient(from 0deg, rgba(185,148,90,0.05) 0deg 6deg, transparent 6deg 12deg);
-  -webkit-mask-image: radial-gradient(circle at 75% 30%, black 0%, transparent 55%);
-  mask-image: radial-gradient(circle at 75% 30%, black 0%, transparent 55%);
-}
-.auth-brand{display:flex; align-items:center; gap:14px; z-index:1;}
-.auth-brand .mark{
-  width:46px; height:46px; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(160deg,var(--dire-br),var(--dire)); color:var(--gold-br); font-family:var(--font-display); font-weight:900; font-size:20px;
-}
-.auth-brand .word{font-family:var(--font-display); font-weight:700; font-size:20px; letter-spacing:.03em;}
-.auth-brand .word span{color:var(--gold-br);}
-.auth-hero h1{z-index:1; font-family:var(--font-display); font-size:clamp(34px,4.4vw,54px); line-height:1.08; font-weight:900; margin-top:40px; max-width:520px;}
-.auth-hero h1 em{font-style:normal; color:var(--gold-br);}
-.auth-hero p.lead{z-index:1; margin-top:18px; color:var(--text-dim); max-width:440px; font-size:15px; line-height:1.7;}
-.auth-stats{z-index:1; display:flex; gap:34px; margin-top:46px;}
-.auth-stats div b{display:block; font-family:var(--font-display); font-size:26px; color:var(--gold-br);}
-.auth-stats div span{font-family:var(--font-ui); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim);}
-.auth-hero .foot-quote{z-index:1; font-family:var(--font-ui); font-style:italic; color:var(--text-dim); font-size:12.5px; letter-spacing:.03em; border-left:2px solid var(--dire-br); padding-left:12px;}
-
-.auth-panel{display:flex; align-items:center; justify-content:center; padding:40px 28px;}
-.auth-card{width:100%; max-width:400px;}
-.auth-tabs{display:flex; border:1px solid var(--line); margin-bottom:28px;}
-.auth-tabs button{flex:1; padding:13px 0; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; font-weight:600; color:var(--text-dim); transition:all .15s;}
-.auth-tabs button.active{background:var(--dire); color:#fff;}
-.auth-card h2{font-family:var(--font-display); font-size:24px; margin-bottom:6px;}
-.auth-card .sub{color:var(--text-dim); font-size:13px; margin-bottom:24px;}
-.field{display:flex; flex-direction:column; gap:6px; margin-bottom:15px;}
-.field label{font-family:var(--font-ui); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold);}
-.btn{
-  font-family:var(--font-ui); font-weight:600; letter-spacing:.06em; text-transform:uppercase; font-size:13px;
-  padding:13px 22px; transition:transform .12s, box-shadow .12s, background .15s; display:inline-flex; align-items:center; justify-content:center; gap:8px;
-}
-.btn:active{transform:translateY(1px);}
-.btn-primary{background:linear-gradient(160deg,var(--dire-br),var(--dire)); color:#fff; box-shadow:0 6px 16px rgba(143,31,26,0.35);}
-.btn-primary:hover{box-shadow:0 8px 20px rgba(194,59,47,0.5);}
-.btn-gold{background:linear-gradient(160deg,var(--gold-br),var(--gold)); color:#231a0f; box-shadow:0 6px 16px rgba(185,148,90,0.25);}
-.btn-gold:hover{box-shadow:0 8px 20px rgba(232,197,129,0.4);}
-.btn-ghost{background:transparent; border:1px solid var(--line); color:var(--text);}
-.btn-ghost:hover{border-color:var(--gold); color:var(--gold-br);}
-.btn-danger{background:transparent; border:1px solid rgba(194,59,47,0.5); color:var(--dire-br);}
-.btn-danger:hover{background:rgba(194,59,47,0.12);}
-.btn-block{width:100%;}
-.btn-sm{padding:8px 14px; font-size:11.5px;}
-.auth-card form{display:flex; flex-direction:column;}
-.auth-foot{margin-top:18px; font-size:12.5px; color:var(--text-dim); text-align:center;}
-.auth-error{background:rgba(143,31,26,0.15); border:1px solid rgba(194,59,47,0.4); color:#f2a9a1; font-size:12.5px; padding:10px 12px; margin-bottom:14px; display:none;}
-.demo-note{margin-top:22px; font-size:11.5px; color:var(--text-dim); line-height:1.6; border-top:1px dashed var(--line); padding-top:14px;}
-
-/* =============== APP SHELL =============== */
-#app{min-height:100vh; display:flex; flex-direction:column;}
-#topbar{
-  position:sticky; top:0; z-index:500; display:flex; align-items:center; justify-content:space-between;
-  padding:14px 28px; background:rgba(11,9,8,0.9); backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
-}
-.topbar-left{display:flex; align-items:center; gap:12px;}
-.topbar-left .mark{width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg,var(--dire-br),var(--dire)); color:var(--gold-br); font-family:var(--font-display); font-weight:900;}
-.topbar-left .word{font-family:var(--font-display); font-weight:700; font-size:17px;}
-.topbar-left .word span{color:var(--gold-br);}
-.topbar-right{display:flex; align-items:center; gap:16px;}
-.coin-pill{display:flex; align-items:center; gap:7px; background:var(--bg-raise); border:1px solid var(--line); padding:8px 14px; font-family:var(--font-ui); font-size:13px; font-weight:600; color:var(--gold-br);}
-.coin-pill .dot{width:8px; height:8px; border-radius:50%; background:var(--gold-br); box-shadow:0 0 8px var(--gold-br);}
-.user-chip{display:flex; align-items:center; gap:10px; cursor:pointer;}
-.avatar{width:34px; height:34px; border-radius:50%; background:linear-gradient(160deg,var(--gold-br),var(--dire-br)); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:14px; color:#1b140d;}
-.user-chip .uname{font-family:var(--font-ui); font-size:13px; font-weight:500;}
-
-#navbar{
-  position:sticky; top:65px; z-index:400; display:flex; gap:6px; padding:10px 28px; overflow-x:auto;
-  background:var(--bg-panel); border-bottom:1px solid var(--line);
-}
-.navbtn{
-  display:flex; align-items:center; gap:8px; padding:10px 16px; font-family:var(--font-ui); font-size:12.5px; font-weight:600;
-  letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim); white-space:nowrap; border-bottom:2px solid transparent; transition:all .15s;
-}
-.navbtn:hover{color:var(--text);}
-.navbtn.active{color:var(--gold-br); border-bottom-color:var(--dire-br);}
-.navbtn .ic{font-size:15px;}
-
-main{flex:1; padding:32px 28px 80px; max-width:1360px; width:100%; margin:0 auto;}
-.view{animation:viewIn .35s ease;}
-@keyframes viewIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
-
-.view-head{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:26px;}
-.view-head h2{font-family:var(--font-display); font-size:30px; font-weight:700;}
-.view-head p{color:var(--text-dim); font-size:13.5px; margin-top:5px;}
-
-.toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px;}
-.toolbar input[type=text]{min-width:220px; flex:1;}
-.toolbar select{min-width:160px;}
-.chip-filter{display:flex; gap:8px; flex-wrap:wrap;}
-.chip-filter button{padding:8px 14px; border:1px solid var(--line); font-family:var(--font-ui); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim);}
-.chip-filter button.active{background:var(--dire); border-color:var(--dire); color:#fff;}
-
-/* =============== ITEM GRID / CARDS =============== */
-.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:20px;}
-.card{
-  background:linear-gradient(165deg,var(--bg-raise2),var(--bg-raise));
-  border:1px solid var(--line); position:relative; box-shadow:var(--shadow);
-  display:flex; flex-direction:column; overflow:hidden; transition:transform .18s, border-color .18s;
-}
-.card:hover{transform:translateY(-4px); border-color:var(--gold);}
-.card .ribbon{
-  position:absolute; top:12px; left:-32px; transform:rotate(-45deg); width:130px; text-align:center; padding:3px 0;
-  font-family:var(--font-ui); font-size:10px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; color:#1b140d; z-index:2;
-}
-.card .ribbon.arcana{background:var(--arcana);}
-.card .ribbon.persona{background:var(--persona); color:#0c211f;}
-.card .imgwrap{
-  height:180px; display:flex; align-items:center; justify-content:center; position:relative;
-  background:
-    radial-gradient(circle at 50% 30%, rgba(185,148,90,0.18), transparent 65%),
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 10px),
-    var(--bg-void);
-  border-bottom:1px solid var(--line);
-}
-.card .imgwrap img{max-height:130px; max-width:82%; object-fit:contain; filter:drop-shadow(0 8px 14px rgba(0,0,0,0.6));}
-.card .body{padding:16px 16px 14px; display:flex; flex-direction:column; gap:8px; flex:1;}
-.card .hero-name{font-family:var(--font-ui); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold);}
-.card .item-name{font-family:var(--font-display); font-size:17px; font-weight:700; line-height:1.25;}
-.card .desc{font-size:12.5px; color:var(--text-dim); line-height:1.55; flex:1;}
-.card .meta-row{display:flex; align-items:center; justify-content:space-between; margin-top:4px;}
-.price-tag{font-family:var(--font-ui); font-weight:700; color:var(--gold-br); font-size:16px; display:flex; align-items:center; gap:5px;}
-.price-tag small{color:var(--text-dim); font-weight:400; font-size:10.5px;}
-.card .owner-line{font-size:10.5px; color:var(--text-dim); border-top:1px dashed var(--line); padding-top:8px; margin-top:2px;}
-.card .actions{display:flex; gap:8px; padding:0 16px 16px;}
-.card .actions .btn{flex:1;}
-.iconbtn{width:38px; height:38px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); flex:0 0 auto !important; font-size:15px;}
-.iconbtn.on{border-color:var(--dire-br); color:var(--dire-br); background:rgba(194,59,47,0.12);}
-
-.empty-state{grid-column:1/-1; text-align:center; padding:70px 20px; color:var(--text-dim);}
-.empty-state .glyph{font-size:38px; margin-bottom:14px; opacity:.6;}
-.empty-state h3{font-family:var(--font-display); color:var(--text); margin-bottom:8px; font-size:19px;}
-.empty-state .btn{margin-top:16px;}
-
-/* =============== PROFILE / STATS =============== */
-.profile-grid{display:grid; grid-template-columns:340px 1fr; gap:24px;}
-@media (max-width:800px){.profile-grid{grid-template-columns:1fr;}}
-.panel{background:linear-gradient(165deg,var(--bg-raise2),var(--bg-raise)); border:1px solid var(--line); box-shadow:var(--shadow); padding:26px;}
-.profile-card{display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;}
-.big-avatar{width:88px; height:88px; border-radius:50%; background:linear-gradient(160deg,var(--gold-br),var(--dire-br)); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:32px; font-weight:700; color:#1b140d;}
-.profile-card h3{font-family:var(--font-display); font-size:22px; margin-top:6px;}
-.profile-card .email{color:var(--text-dim); font-size:13px;}
-.profile-card .since{font-size:11.5px; color:var(--text-dim); font-family:var(--font-ui); letter-spacing:.06em; text-transform:uppercase; margin-top:2px;}
-.divider{width:100%; height:1px; background:var(--line); margin:16px 0;}
-.stat-list{display:flex; flex-direction:column; gap:12px; width:100%;}
-.stat-row{display:flex; justify-content:space-between; align-items:center; font-size:13px;}
-.stat-row b{font-family:var(--font-ui); color:var(--gold-br);}
-.stats-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:16px; margin-bottom:22px;}
-.stat-card{background:var(--bg-raise); border:1px solid var(--line); padding:18px; text-align:center;}
-.stat-card b{display:block; font-family:var(--font-display); font-size:28px; color:var(--gold-br);}
-.stat-card span{font-family:var(--font-ui); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim);}
-.edit-form{display:flex; flex-direction:column; gap:14px; max-width:420px;}
-
-/* =============== TABLES (orders / listings mgmt) =============== */
-.table-wrap{overflow-x:auto; border:1px solid var(--line);}
-table{width:100%; border-collapse:collapse; font-size:13px;}
-th{text-align:left; font-family:var(--font-ui); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); padding:12px 14px; background:var(--bg-raise); border-bottom:1px solid var(--line);}
-td{padding:12px 14px; border-bottom:1px solid var(--line); color:var(--text-dim);}
-tr:last-child td{border-bottom:none;}
-td.strong{color:var(--text); font-weight:500;}
-.badge{display:inline-block; padding:3px 9px; font-size:10px; font-family:var(--font-ui); text-transform:uppercase; letter-spacing:.08em; font-weight:700;}
-.badge.arcana{background:rgba(217,154,43,0.18); color:var(--arcana);}
-.badge.persona{background:rgba(63,158,147,0.18); color:var(--persona);}
-
-/* =============== CART SUMMARY =============== */
-.cart-layout{display:grid; grid-template-columns:1fr 320px; gap:22px; align-items:start;}
-@media (max-width:800px){.cart-layout{grid-template-columns:1fr;}}
-.cart-row{display:flex; gap:14px; align-items:center; padding:14px; background:var(--bg-raise); border:1px solid var(--line); margin-bottom:10px;}
-.cart-row img{width:56px; height:56px; object-fit:contain; background:var(--bg-void); padding:6px;}
-.cart-row .info{flex:1;}
-.cart-row .info .n{font-family:var(--font-display); font-size:14.5px;}
-.cart-row .info .h{font-size:11px; color:var(--gold); font-family:var(--font-ui); text-transform:uppercase; letter-spacing:.08em;}
-.cart-row .p{font-family:var(--font-ui); color:var(--gold-br); font-weight:700;}
-.summary-line{display:flex; justify-content:space-between; font-size:13.5px; padding:8px 0; color:var(--text-dim);}
-.summary-line.total{border-top:1px solid var(--line); margin-top:8px; padding-top:14px; color:var(--text); font-weight:700; font-size:16px; font-family:var(--font-ui);}
-.summary-line.total b{color:var(--gold-br);}
-
-/* =============== MODAL =============== */
-.modal-overlay{position:fixed; inset:0; background:rgba(6,5,4,0.75); z-index:6000; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px);}
-.modal-box{background:var(--bg-panel); border:1px solid var(--line); width:100%; max-width:520px; padding:28px; box-shadow:var(--shadow); max-height:90vh; overflow-y:auto;}
-.modal-box h3{font-family:var(--font-display); font-size:21px; margin-bottom:18px;}
-.modal-actions{display:flex; gap:10px; margin-top:20px;}
-.modal-actions .btn{flex:1;}
-.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-
-/* footer */
-footer{border-top:1px solid var(--line); padding:22px 28px; text-align:center; font-size:11.5px; color:var(--text-dim); font-family:var(--font-ui); letter-spacing:.06em;}
-footer span{color:var(--gold);}
-
+::selection{ background:var(--gold); color:var(--void); }
 ::-webkit-scrollbar{width:10px; height:10px;}
-::-webkit-scrollbar-track{background:var(--bg-void);}
-::-webkit-scrollbar-thumb{background:var(--bg-raise2); border:2px solid var(--bg-void);}
+::-webkit-scrollbar-track{background:var(--void);}
+::-webkit-scrollbar-thumb{background:var(--bronze-line); border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+a{color:inherit; text-decoration:none;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:2px; }
+
+.hidden{display:none !important;}
+
+/* ============================= ORNAMENT / SHARED ============================= */
+.rune-divider{
+  height:1px;
+  background:linear-gradient(90deg, transparent, var(--bronze-line) 15%, var(--bronze-line) 85%, transparent);
+  position:relative;
+}
+.rune-divider::after{
+  content:'\2726';
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  background:var(--void); color:var(--gold); font-size:11px; padding:0 10px;
+}
+
+.brandmark{
+  display:flex; align-items:center; gap:12px;
+}
+.brandmark svg{ flex-shrink:0; filter:drop-shadow(0 0 10px rgba(201,162,75,0.35)); }
+.brandmark .word{
+  font-family:var(--font-display);
+  font-weight:700;
+  letter-spacing:0.06em;
+  font-size:19px;
+  line-height:1;
+  color:var(--parchment);
+}
+.brandmark .word span{ color:var(--gold-bright); }
+.brandmark .sub{
+  font-size:10.5px;
+  color:var(--muted-dim);
+  letter-spacing:0.18em;
+  margin-top:4px;
+}
+
+/* ============================= AUTH SCREEN ============================= */
+#auth-screen{
+  min-height:100vh;
+  display:flex; align-items:center; justify-content:center;
+  padding:32px 20px;
+  position:relative;
+}
+.auth-backdrop{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(201,162,75,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,162,75,0.035) 1px, transparent 1px);
+  background-size:42px 42px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+}
+.auth-card{
+  position:relative; z-index:1;
+  width:100%; max-width:420px;
+  background:linear-gradient(180deg, var(--panel-raised), var(--panel));
+  border:1px solid var(--bronze-line);
+  border-radius:var(--radius-l);
+  padding:40px 38px 34px;
+  box-shadow:var(--shadow-deep);
+  opacity:0; transform:translateY(18px) scale(0.98);
+  animation:authIn 0.7s cubic-bezier(.16,.9,.35,1) forwards;
+}
+@keyframes authIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
+.auth-card::before{
+  content:'';
+  position:absolute; inset:0; border-radius:var(--radius-l);
+  padding:1px;
+  background:linear-gradient(135deg, rgba(201,162,75,0.5), transparent 30%, transparent 70%, rgba(139,42,50,0.4));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  pointer-events:none;
+}
+.auth-logo-wrap{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; margin-bottom:26px;}
+.auth-logo-wrap .brandmark{ flex-direction:column; }
+.auth-logo-wrap .word{ font-size:24px; }
+.auth-tag{ color:var(--muted); font-size:14px; letter-spacing:0.02em; margin-top:-4px;}
+
+.field{ margin-bottom:16px; }
+.field label{
+  display:block; font-size:12px; letter-spacing:0.09em; color:var(--muted);
+  margin-bottom:7px; text-transform:uppercase; font-weight:600;
+}
+.field input{
+  width:100%; background:var(--void); border:1px solid var(--bronze-line);
+  border-radius:var(--radius-s); padding:11px 13px; color:var(--parchment);
+  font-size:15px; transition:border-color .2s, box-shadow .2s;
+}
+.field input::placeholder{ color:var(--muted-dim); }
+.field input:focus{ border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,162,75,0.12); }
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  border:1px solid transparent; border-radius:var(--radius-s);
+  padding:11px 18px; font-size:14.5px; font-weight:600; letter-spacing:0.03em;
+  transition:transform .15s, filter .15s, background .2s, border-color .2s;
+}
+.btn:active{ transform:translateY(1px); }
+.btn-primary{ background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#241A0B; width:100%; }
+.btn-primary:hover{ filter:brightness(1.08); }
+.btn-ghost{ background:transparent; border-color:var(--bronze-line); color:var(--parchment); }
+.btn-ghost:hover{ border-color:var(--gold); color:var(--gold-bright); }
+.btn-danger{ background:transparent; border-color:var(--blood); color:var(--blood-bright); }
+.btn-danger:hover{ background:rgba(139,42,50,0.15); }
+.btn-teal{ background:linear-gradient(180deg, var(--teal-bright), var(--teal)); color:#0C201D; }
+.btn-teal:hover{ filter:brightness(1.08); }
+.btn-sm{ padding:7px 12px; font-size:12.5px; }
+.btn-block{ width:100%; }
+.btn[disabled]{ opacity:0.55; pointer-events:none; }
+
+.auth-switch{
+  text-align:center; margin-top:18px; font-size:13.5px; color:var(--muted);
+}
+.auth-switch button{ background:none; border:none; color:var(--gold-bright); font-weight:600; font-size:13.5px; }
+.auth-switch button:hover{ text-decoration:underline; }
+
+.auth-error{
+  background:rgba(139,42,50,0.14); border:1px solid rgba(139,42,50,0.5);
+  color:#F0A9AF; font-size:13px; padding:9px 12px; border-radius:var(--radius-s);
+  margin-bottom:16px; display:none;
+}
+.auth-error.show{ display:block; }
+
+/* ============================= APP SHELL ============================= */
+#app-shell{ display:flex; min-height:100vh; }
+
+.sidebar{
+  width:250px; flex-shrink:0;
+  background:linear-gradient(180deg, var(--panel-raised), var(--panel) 60%);
+  border-right:1px solid var(--bronze-line);
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh;
+}
+.sidebar-head{ padding:24px 22px 18px; }
+.sidebar-nav{ flex:1; padding:10px 14px; display:flex; flex-direction:column; gap:3px; overflow-y:auto; }
+.nav-item{
+  display:flex; align-items:center; gap:12px;
+  padding:11px 14px; border-radius:var(--radius-s);
+  color:var(--muted); font-size:14.5px; font-weight:500; letter-spacing:0.01em;
+  border:1px solid transparent; position:relative;
+  transition:background .18s, color .18s, border-color .18s;
+}
+.nav-item svg{ width:18px; height:18px; flex-shrink:0; opacity:0.85; }
+.nav-item:hover{ color:var(--parchment); background:rgba(201,162,75,0.06); }
+.nav-item.active{
+  color:var(--gold-bright); background:rgba(201,162,75,0.1);
+  border-color:rgba(201,162,75,0.28);
+}
+.nav-item.active::before{
+  content:''; position:absolute; left:-14px; top:50%; transform:translateY(-50%);
+  width:3px; height:60%; background:var(--gold); border-radius:2px;
+}
+.nav-item .count{
+  margin-left:auto; font-size:11px; color:var(--muted-dim); background:var(--void);
+  border:1px solid var(--bronze-line); padding:1px 7px; border-radius:20px;
+}
+.sidebar-foot{ padding:16px 18px 20px; border-top:1px solid var(--bronze-line-soft); }
+.admin-chip{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.admin-avatar{
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg, var(--blood), var(--gold));
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; color:var(--void); font-size:14px;
+}
+.admin-meta{ overflow:hidden; }
+.admin-name{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.admin-role{ font-size:11px; color:var(--muted-dim); letter-spacing:0.06em; text-transform:uppercase; }
+
+.main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.topbar{
+  height:66px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+  padding:0 30px; border-bottom:1px solid var(--bronze-line-soft);
+  background:rgba(23,18,16,0.6); backdrop-filter:blur(6px);
+  position:sticky; top:0; z-index:5;
+}
+.topbar h1{ font-family:var(--font-display); font-size:20px; font-weight:600; letter-spacing:0.02em; }
+.topbar .sub{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+.topbar-actions{ display:flex; align-items:center; gap:10px; }
+
+.stage{ padding:28px 30px 60px; flex:1; }
+.view{ animation:viewIn .35s ease both; }
+@keyframes viewIn{ from{ opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+/* ============================= DASHBOARD ============================= */
+.stat-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:30px; }
+.stat-card{
+  background:var(--panel-raised); border:1px solid var(--bronze-line);
+  border-radius:var(--radius-m); padding:20px; position:relative; overflow:hidden;
+}
+.stat-card::after{
+  content:''; position:absolute; right:-30px; top:-30px; width:100px; height:100px; border-radius:50%;
+  background:radial-gradient(circle, var(--glow-color, rgba(201,162,75,0.18)), transparent 70%);
+}
+.stat-label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:10px; }
+.stat-value{ font-family:var(--font-display); font-size:32px; font-weight:700; color:var(--parchment); }
+.stat-value.gold{ color:var(--gold-bright); }
+.stat-value.teal{ color:var(--teal-bright); }
+.stat-value.blood{ color:var(--blood-bright); }
+.stat-foot{ font-size:12px; color:var(--muted-dim); margin-top:6px; }
+
+.panel{
+  background:var(--panel-raised); border:1px solid var(--bronze-line);
+  border-radius:var(--radius-m); padding:22px;
+}
+.panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.panel-head h2{ font-family:var(--font-display); font-size:16px; font-weight:600; }
+.dash-grid{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
+
+.mini-row{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--bronze-line-soft); }
+.mini-row:last-child{ border-bottom:none; }
+.mini-thumb{ width:38px; height:38px; border-radius:6px; object-fit:cover; border:1px solid var(--bronze-line); background:var(--void); }
+.mini-info{ flex:1; min-width:0; }
+.mini-name{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mini-sub{ font-size:11.5px; color:var(--muted-dim); }
+.badge{
+  font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+  padding:3px 9px; border-radius:20px; white-space:nowrap;
+}
+.badge-in{ background:rgba(79,145,135,0.16); color:var(--teal-bright); border:1px solid rgba(79,145,135,0.4); }
+.badge-low{ background:rgba(201,162,75,0.14); color:var(--gold-bright); border:1px solid rgba(201,162,75,0.4); }
+.badge-out{ background:rgba(139,42,50,0.16); color:#F0A9AF; border:1px solid rgba(139,42,50,0.45); }
+.badge-immortal{ background:rgba(201,162,75,0.12); color:var(--gold-bright); border:1px solid rgba(201,162,75,0.35); }
+.badge-arcana{ background:rgba(139,42,50,0.12); color:#E39AA1; border:1px solid rgba(139,42,50,0.35); }
+
+/* ============================= TOOLBAR / FILTERS ============================= */
+.toolbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:22px; flex-wrap:wrap; }
+.search-wrap{ position:relative; flex:1; min-width:220px; max-width:340px; }
+.search-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--muted-dim); }
+.search-wrap input{
+  width:100%; background:var(--void); border:1px solid var(--bronze-line); border-radius:20px;
+  padding:9px 14px 9px 34px; color:var(--parchment); font-size:13.5px;
+}
+.search-wrap input:focus{ border-color:var(--gold); outline:none; }
+.chip-group{ display:flex; gap:8px; }
+.chip{
+  padding:8px 14px; border-radius:20px; border:1px solid var(--bronze-line); background:var(--panel-raised);
+  font-size:12.5px; color:var(--muted); font-weight:600; letter-spacing:0.02em;
+}
+.chip.active{ border-color:var(--gold); color:var(--gold-bright); background:rgba(201,162,75,0.1); }
+.chip:hover{ color:var(--parchment); }
+
+/* ============================= ITEM GRID / CARD ============================= */
+.item-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:18px; }
+.item-card{
+  background:var(--panel-raised); border:1px solid var(--bronze-line); border-radius:var(--radius-m);
+  overflow:hidden; display:flex; flex-direction:column; transition:border-color .2s, transform .2s;
+}
+.item-card:hover{ border-color:var(--gold); transform:translateY(-2px); }
+.item-media{
+  height:150px; position:relative; background:
+    radial-gradient(ellipse at 50% 20%, rgba(201,162,75,0.14), transparent 70%), var(--void);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  border-bottom:1px solid var(--bronze-line-soft);
+}
+.item-media img{ width:100%; height:100%; object-fit:cover; }
+.item-media .no-img{ color:var(--muted-dim); font-size:12px; text-align:center; }
+.item-rarity-tag{
+  position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; letter-spacing:0.05em;
+  padding:3px 8px; border-radius:4px; text-transform:uppercase;
+}
+.item-body{ padding:14px 15px 15px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.item-hero{ font-size:11px; color:var(--muted-dim); letter-spacing:0.06em; text-transform:uppercase; }
+.item-name{ font-family:var(--font-display); font-size:15px; font-weight:600; line-height:1.3; }
+.item-row{ display:flex; align-items:center; justify-content:space-between; margin-top:auto; }
+.item-price{ font-size:16px; font-weight:700; color:var(--gold-bright); }
+.item-stock-line{ font-size:12px; color:var(--muted); }
+.item-actions{ display:flex; gap:8px; margin-top:10px; }
+.item-actions .btn{ flex:1; }
+.stepper{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+.stepper button{
+  width:26px; height:26px; border-radius:6px; border:1px solid var(--bronze-line); background:var(--void);
+  color:var(--parchment); font-size:15px; display:flex; align-items:center; justify-content:center;
+}
+.stepper button:hover{ border-color:var(--gold); color:var(--gold-bright); }
+.stepper .val{ font-size:13.5px; font-weight:600; min-width:22px; text-align:center; }
+
+.empty-state{
+  text-align:center; padding:70px 20px; color:var(--muted);
+  border:1px dashed var(--bronze-line); border-radius:var(--radius-m);
+}
+.empty-state svg{ opacity:0.5; margin-bottom:14px; }
+.empty-state h3{ font-family:var(--font-display); color:var(--parchment); font-size:17px; margin-bottom:6px; }
+.empty-state p{ font-size:13.5px; }
+
+/* ============================= TABLE (STOCK MANAGER) ============================= */
+.table-wrap{ overflow-x:auto; border:1px solid var(--bronze-line); border-radius:var(--radius-m); }
+table{ width:100%; border-collapse:collapse; min-width:760px; }
+thead th{
+  text-align:left; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted);
+  padding:13px 16px; background:var(--panel-raised-2); border-bottom:1px solid var(--bronze-line);
+}
+tbody td{ padding:12px 16px; border-bottom:1px solid var(--bronze-line-soft); font-size:13.5px; vertical-align:middle; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:rgba(201,162,75,0.03); }
+.td-item{ display:flex; align-items:center; gap:11px; }
+.td-item img{ width:34px; height:34px; border-radius:6px; object-fit:cover; background:var(--void); border:1px solid var(--bronze-line); }
+
+/* ============================= FORM (ADD/EDIT) ============================= */
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-grid .full{ grid-column:1 / -1; }
+.field select{
+  width:100%; background:var(--void); border:1px solid var(--bronze-line); border-radius:var(--radius-s);
+  padding:11px 13px; color:var(--parchment); font-size:15px;
+}
+.field textarea{
+  width:100%; background:var(--void); border:1px solid var(--bronze-line); border-radius:var(--radius-s);
+  padding:11px 13px; color:var(--parchment); font-size:14.5px; resize:vertical; min-height:70px;
+}
+.img-input-row{ display:flex; gap:8px; }
+.img-input-row input{ flex:1; }
+.upload-btn{
+  border:1px solid var(--bronze-line); background:var(--void); border-radius:var(--radius-s);
+  padding:0 14px; font-size:12.5px; color:var(--muted); white-space:nowrap;
+}
+.upload-btn:hover{ border-color:var(--gold); color:var(--gold-bright); }
+.img-preview{
+  width:100%; height:160px; border:1px dashed var(--bronze-line); border-radius:var(--radius-s);
+  display:flex; align-items:center; justify-content:center; overflow:hidden; margin-top:10px; background:var(--void);
+}
+.img-preview img{ width:100%; height:100%; object-fit:cover; }
+.img-preview span{ font-size:12px; color:var(--muted-dim); }
+.form-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+
+/* ============================= MODAL ============================= */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(5,4,3,0.72); backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
+  opacity:0; animation:overlayIn .2s ease forwards;
+}
+@keyframes overlayIn{ to{ opacity:1; } }
+.modal{
+  background:linear-gradient(180deg, var(--panel-raised), var(--panel));
+  border:1px solid var(--bronze-line); border-radius:var(--radius-l);
+  width:100%; max-width:640px; max-height:88vh; overflow-y:auto;
+  padding:28px 30px 30px; box-shadow:var(--shadow-deep);
+  transform:scale(0.96) translateY(10px); opacity:0;
+  animation:modalIn .28s cubic-bezier(.16,.9,.35,1) forwards;
+}
+@keyframes modalIn{ to{ transform:scale(1) translateY(0); opacity:1; } }
+.modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.modal-head h2{ font-family:var(--font-display); font-size:19px; font-weight:600; }
+.modal-close{ background:none; border:none; color:var(--muted); font-size:22px; line-height:1; padding:4px; }
+.modal-close:hover{ color:var(--gold-bright); }
+.modal-sm{ max-width:400px; text-align:center; }
+.modal-sm p{ color:var(--muted); font-size:14px; margin:10px 0 20px; }
+.modal-sm .form-actions{ justify-content:center; }
+
+/* ============================= TOASTS ============================= */
+#toast-stack{ position:fixed; bottom:24px; right:24px; z-index:200; display:flex; flex-direction:column; gap:10px; }
+.toast{
+  background:var(--panel-raised); border:1px solid var(--bronze-line); border-left:3px solid var(--gold);
+  border-radius:var(--radius-s); padding:13px 18px; min-width:260px; box-shadow:var(--shadow-deep);
+  font-size:13.5px; animation:toastIn .25s ease, toastOut .3s ease 2.7s forwards;
+}
+.toast.err{ border-left-color:var(--blood); }
+.toast.ok{ border-left-color:var(--teal); }
+@keyframes toastIn{ from{ opacity:0; transform:translateX(30px);} to{opacity:1; transform:translateX(0);} }
+@keyframes toastOut{ to{ opacity:0; transform:translateX(30px);} }
+
+/* ============================= SETTINGS ============================= */
+.settings-card{ max-width:480px; }
+.settings-row{ display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid var(--bronze-line-soft); }
+.settings-row:last-child{ border-bottom:none; }
+.settings-row-info h4{ font-size:14px; font-weight:600; margin-bottom:3px; }
+.settings-row-info p{ font-size:12.5px; color:var(--muted); }
+
+/* ============================= RESPONSIVE ============================= */
+@media (max-width:980px){
+  .stat-grid{ grid-template-columns:repeat(2,1fr); }
+  .dash-grid{ grid-template-columns:1fr; }
+  .form-grid{ grid-template-columns:1fr; }
+}
+@media (max-width:760px){
+  .sidebar{ position:fixed; left:0; top:0; bottom:0; z-index:50; transform:translateX(-100%); transition:transform .25s ease; }
+  .sidebar.open{ transform:translateX(0); }
+  .stat-grid{ grid-template-columns:1fr 1fr; }
+  .topbar{ padding:0 16px; }
+  .stage{ padding:20px 16px 50px; }
+  .menu-toggle{ display:flex !important; }
+}
+.menu-toggle{ display:none; background:none; border:1px solid var(--bronze-line); border-radius:6px; width:36px; height:36px; align-items:center; justify-content:center; color:var(--parchment); }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+}
 </style>
 </head>
 <body>
 
-<!-- ============ LOADING ============ -->
-<div id="loadingScreen">
-  <div class="rune-spinner"></div>
-  <p>Summoning the Ancient Cache…</p>
+<!-- ============================= ICONS (inline defs, reused via <use>) ============================= -->
+<svg width="0" height="0" style="position:absolute">
+<defs>
+<symbol id="i-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c2 3-2 4-2 7a4 4 0 1 0 8 0c0-1-1-2-1-2 1 4-1 5-1 5 1-4-3-6-4-10z"/></symbol>
+<symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3l3 6-3 12M15 3l-3 6 3 12"/></symbol>
+<symbol id="i-plus-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></symbol>
+<symbol id="i-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M9 12l3 2 3-2" opacity="0.4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+</defs>
+</svg>
+
+<!-- ============================= LOGO SVG (reused) ============================= -->
+<template id="tpl-logo">
+<svg width="34" height="34" viewBox="0 0 48 48" fill="none">
+  <path d="M24 3 L44 14 V34 L24 45 L4 34 V14 Z" stroke="#C9A24B" stroke-width="1.6" fill="rgba(201,162,75,0.06)"/>
+  <path d="M24 3 V45 M4 14 L44 34 M44 14 L4 34" stroke="#8B2A32" stroke-width="0.8" opacity="0.55"/>
+  <circle cx="24" cy="24" r="7.5" stroke="#E8C468" stroke-width="1.6" fill="#0B0908"/>
+  <path d="M24 18.5 L27 24 L24 29.5 L21 24 Z" fill="#C9A24B"/>
+</svg>
+</template>
+
+<!-- ============================= AUTH SCREEN ============================= -->
+<div id="auth-screen">
+  <div class="auth-backdrop"></div>
+  <div class="auth-card">
+    <div class="auth-logo-wrap">
+      <div class="logo-slot"></div>
+      <div>
+        <div class="word">RELI<span>QUARY</span></div>
+        <div class="auth-tag" id="auth-tagline">Dota 2 Skin Marketplace &mdash; Admin Console</div>
+      </div>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+
+    <!-- LOGIN FORM -->
+    <form id="login-form">
+      <div class="field">
+        <label for="login-username">Admin Username</label>
+        <input id="login-username" type="text" placeholder="e.g. keeper_of_relics" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="login-submit-btn">Enter the Reliquary</button>
+      <div class="auth-switch">No admin account yet? <button type="button" id="show-register">Register one</button></div>
+    </form>
+
+    <!-- REGISTER FORM -->
+    <form id="register-form" class="hidden">
+      <div class="field">
+        <label for="reg-username">Choose Username</label>
+        <input id="reg-username" type="text" placeholder="e.g. keeper_of_relics" autocomplete="username" required minlength="3">
+      </div>
+      <div class="field">
+        <label for="reg-password">Choose Password</label>
+        <input id="reg-password" type="password" placeholder="At least 6 characters" autocomplete="new-password" required minlength="6">
+      </div>
+      <div class="field">
+        <label for="reg-password2">Confirm Password</label>
+        <input id="reg-password2" type="password" placeholder="Repeat password" autocomplete="new-password" required minlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary" id="register-submit-btn">Create Admin Account</button>
+      <div class="auth-switch">Already have an account? <button type="button" id="show-login">Sign in</button></div>
+    </form>
+  </div>
 </div>
 
-<!-- ============ TOASTS ============ -->
-<div id="toastStack"></div>
+<!-- ============================= APP SHELL ============================= -->
+<div id="app-shell" class="hidden">
 
-<!-- ============ AUTH SCREEN ============ -->
-<div id="authScreen" class="hidden">
-  <div class="auth-hero">
-    <div class="auth-brand">
-      <div class="mark">DC</div>
-      <div class="word">ANCIENT <span>CACHE</span></div>
-    </div>
-    <div>
-      <h1>Trade the rarest <em>Arcanas</em> &amp; <em>Personas</em> in the Ancient realm.</h1>
-      <p class="lead">A player-run bazaar for cosmetic legends — reforge your hero's form, haggle for old battle relics, and build your own vault of prestige items.</p>
-      <div class="auth-stats">
-        <div><b id="statHeroCount">18+</b><span>Heroes Listed</span></div>
-        <div><b>1:1</b><span>Live Firebase Sync</span></div>
-        <div><b>24/7</b><span>Marketplace Open</span></div>
-      </div>
-    </div>
-    <p class="foot-quote">"Time is a river, and this... is but a stone within it." — an old relic trader</p>
-  </div>
-
-  <div class="auth-panel">
-    <div class="auth-card">
-      <div class="auth-tabs">
-        <button id="tabLoginBtn" class="active">Sign In</button>
-        <button id="tabRegisterBtn">Register</button>
-      </div>
-
-      <!-- LOGIN -->
-      <div id="loginForm">
-        <h2>Welcome back, hero.</h2>
-        <p class="sub">Sign in to browse and trade your cosmetics.</p>
-        <div class="auth-error" id="loginError"></div>
-        <form onsubmit="return false;">
-          <div class="field"><label>Username</label><input type="text" id="loginUsername" placeholder="e.g. nevermore_99" autocomplete="username"></div>
-          <div class="field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
-          <button class="btn btn-primary btn-block" id="loginSubmitBtn" type="submit">Enter the Cache</button>
-        </form>
-        <p class="auth-foot">No account? <a href="#" id="gotoRegister" style="color:var(--gold-br); text-decoration:underline;">Register here</a></p>
-      </div>
-
-      <!-- REGISTER -->
-      <div id="registerForm" class="hidden">
-        <h2>Join the Marketplace</h2>
-        <p class="sub">Create an account to start trading.</p>
-        <div class="auth-error" id="registerError"></div>
-        <form onsubmit="return false;">
-          <div class="field"><label>Display Name</label><input type="text" id="regUsername" placeholder="e.g. WraithKing_Fan"></div>
-          <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"></div>
-          <div class="field"><label>Password</label><input type="password" id="regPassword" placeholder="min. 6 characters"></div>
-          <div class="field"><label>Confirm Password</label><input type="password" id="regPassword2" placeholder="repeat password"></div>
-          <button class="btn btn-gold btn-block" id="registerSubmitBtn" type="submit">Create Account</button>
-        </form>
-        <p class="auth-foot">Already registered? <a href="#" id="gotoLogin" style="color:var(--gold-br); text-decoration:underline;">Sign in</a></p>
-      </div>
-
-      <div class="demo-note">New accounts start with <b style="color:var(--gold-br)">2,500 coins</b> to spend in the marketplace. All data is stored live in Firebase Realtime Database.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ APP SHELL ============ -->
-<div id="app" class="hidden">
-  <div id="topbar">
-    <div class="topbar-left">
-      <div class="mark">DC</div>
-      <div class="word">ANCIENT <span>CACHE</span></div>
-    </div>
-    <div class="topbar-right">
-      <div class="coin-pill"><span class="dot"></span><span id="topCoins">0</span> Coins</div>
-      <div class="user-chip" id="userChipBtn" title="Go to profile">
-        <div class="avatar" id="topAvatar">?</div>
-        <span class="uname" id="topUsername">Guest</span>
-      </div>
-      <button class="btn btn-ghost btn-sm" id="logoutBtn">Logout</button>
-    </div>
-  </div>
-
-  <div id="navbar">
-    <button class="navbtn active" data-view="marketplace"><span class="ic">🛒</span>Marketplace</button>
-    <button class="navbtn" data-view="addListing"><span class="ic">➕</span>Add Listing</button>
-    <button class="navbtn" data-view="myListings"><span class="ic">📦</span>My Listings</button>
-    <button class="navbtn" data-view="wishlist"><span class="ic">❤️</span>Wishlist</button>
-    <button class="navbtn" data-view="cart"><span class="ic">🛍️</span>Cart</button>
-    <button class="navbtn" data-view="orders"><span class="ic">🧾</span>Orders</button>
-    <button class="navbtn" data-view="profile"><span class="ic">👤</span>Profile</button>
-  </div>
-
-  <main>
-
-    <!-- ===== MARKETPLACE ===== -->
-    <section id="view-marketplace" class="view">
-      <div class="view-head">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="brandmark">
+        <div class="logo-slot"></div>
         <div>
-          <h2>The Marketplace</h2>
-          <p>Browse Arcana &amp; Persona items across every listed hero.</p>
+          <div class="word">RELI<span>QUARY</span></div>
+          <div class="sub">ADMIN CONSOLE</div>
         </div>
       </div>
-      <div class="toolbar">
-        <input type="text" id="searchInput" placeholder="Search hero or item name…">
-        <select id="sortSelect">
-          <option value="new">Newest First</option>
-          <option value="priceLow">Price: Low to High</option>
-          <option value="priceHigh">Price: High to Low</option>
-          <option value="az">Name: A–Z</option>
-        </select>
-      </div>
-      <div class="chip-filter" id="typeFilter" style="margin-bottom:20px;">
-        <button class="active" data-type="all">All</button>
-        <button data-type="Arcana">Arcana</button>
-        <button data-type="Persona">Persona</button>
-      </div>
-      <div class="grid" id="marketGrid"></div>
-    </section>
+    </div>
 
-    <!-- ===== ADD LISTING ===== -->
-    <section id="view-addListing" class="view hidden">
-      <div class="view-head"><div><h2>List a New Item</h2><p>Post an Arcana or Persona from your collection to the Cache.</p></div></div>
-      <div class="panel" style="max-width:640px;">
-        <form onsubmit="return false;" class="edit-form" id="addListingForm">
-          <div class="grid-2">
-            <div class="field"><label>Hero Name</label><input type="text" id="alHeroName" placeholder="e.g. Shadow Fiend" list="heroSuggest"></div>
-            <div class="field"><label>Item Type</label>
-              <select id="alType"><option value="Arcana">Arcana</option><option value="Persona">Persona</option></select>
+    <div class="rune-divider" style="margin:0 20px 12px;"></div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-view="dashboard"><svg><use href="#i-dashboard"/></svg> Dashboard</a>
+      <a href="#" class="nav-item" data-view="immortal"><svg><use href="#i-flame"/></svg> Immortal Skins <span class="count" id="count-immortal">0</span></a>
+      <a href="#" class="nav-item" data-view="arcana"><svg><use href="#i-gem"/></svg> Arcana Skins <span class="count" id="count-arcana">0</span></a>
+      <a href="#" class="nav-item" data-view="add"><svg><use href="#i-plus-circle"/></svg> Add New Item</a>
+      <a href="#" class="nav-item" data-view="stock"><svg><use href="#i-box"/></svg> Manage Stock</a>
+      <a href="#" class="nav-item" data-view="soldout"><svg><use href="#i-archive"/></svg> Sold Out Archive <span class="count" id="count-soldout">0</span></a>
+      <a href="#" class="nav-item" data-view="settings"><svg><use href="#i-gear"/></svg> Account Settings</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="admin-chip">
+        <div class="admin-avatar" id="admin-avatar">A</div>
+        <div class="admin-meta">
+          <div class="admin-name" id="admin-name-display">Admin</div>
+          <div class="admin-role">Keeper</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-block btn-sm" id="logout-btn"><svg width="14" height="14"><use href="#i-logout"/></svg>&nbsp; Log Out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <button class="menu-toggle" id="menu-toggle"><svg width="18" height="18"><use href="#i-menu"/></svg></button>
+        <div>
+          <h1 id="topbar-title">Dashboard</h1>
+          <div class="sub" id="topbar-sub">Overview of the whole reliquary</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm" id="topbar-add-btn"><svg width="14" height="14"><use href="#i-plus-circle"/></svg>&nbsp; New Item</button>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+
+      <!-- ===== DASHBOARD VIEW ===== -->
+      <section class="view" id="view-dashboard" data-view-root>
+        <div class="stat-grid">
+          <div class="stat-card" style="--glow-color:rgba(201,162,75,0.22)">
+            <div class="stat-label">Total Relics Listed</div>
+            <div class="stat-value gold" id="stat-total">0</div>
+            <div class="stat-foot">Immortal + Arcana combined</div>
+          </div>
+          <div class="stat-card" style="--glow-color:rgba(79,145,135,0.22)">
+            <div class="stat-label">Units In Stock</div>
+            <div class="stat-value teal" id="stat-stock">0</div>
+            <div class="stat-foot">Across all active listings</div>
+          </div>
+          <div class="stat-card" style="--glow-color:rgba(139,42,50,0.22)">
+            <div class="stat-label">Reclaimed (Sold Out)</div>
+            <div class="stat-value blood" id="stat-soldout">0</div>
+            <div class="stat-foot">Listings with zero left</div>
+          </div>
+          <div class="stat-card" style="--glow-color:rgba(201,162,75,0.22)">
+            <div class="stat-label">Vault Value</div>
+            <div class="stat-value gold" id="stat-value">$0</div>
+            <div class="stat-foot">Price &times; stock remaining</div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="panel">
+            <div class="panel-head"><h2>Dwindling Stock</h2></div>
+            <div id="dash-low-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Recently Added</h2></div>
+            <div id="dash-recent-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== IMMORTAL VIEW ===== -->
+      <section class="view hidden" id="view-immortal" data-view-root>
+        <div class="toolbar">
+          <div class="search-wrap"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search immortal skins..." data-search="immortal"></div>
+        </div>
+        <div class="item-grid" id="grid-immortal"></div>
+      </section>
+
+      <!-- ===== ARCANA VIEW ===== -->
+      <section class="view hidden" id="view-arcana" data-view-root>
+        <div class="toolbar">
+          <div class="search-wrap"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search arcana skins..." data-search="arcana"></div>
+        </div>
+        <div class="item-grid" id="grid-arcana"></div>
+      </section>
+
+      <!-- ===== ADD ITEM VIEW ===== -->
+      <section class="view hidden" id="view-add" data-view-root>
+        <div class="panel" style="max-width:760px;">
+          <div class="panel-head"><h2>Add a New Relic to the Marketplace</h2></div>
+          <form id="add-item-form">
+            <div class="form-grid">
+              <div class="field"><label>Item Name</label><input type="text" id="f-name" placeholder="e.g. Arcana of the Frostbound Dragon" required></div>
+              <div class="field"><label>Hero</label><input type="text" id="f-hero" placeholder="e.g. Dragon Knight" required></div>
+              <div class="field"><label>Rarity</label>
+                <select id="f-type" required>
+                  <option value="" disabled selected>Select rarity</option>
+                  <option value="immortal">Immortal</option>
+                  <option value="arcana">Arcana</option>
+                </select>
+              </div>
+              <div class="field"><label>Price (USD)</label><input type="number" id="f-price" min="0" step="0.01" placeholder="e.g. 24.99" required></div>
+              <div class="field"><label>Units Left in Stock</label><input type="number" id="f-stock" min="0" step="1" placeholder="e.g. 12" required></div>
+              <div class="field"><label>Origin / Set</label><input type="text" id="f-origin" placeholder="e.g. The Frostivus Collection"></div>
+              <div class="field full"><label>Description</label><textarea id="f-desc" placeholder="Short description shown to buyers..."></textarea></div>
+              <div class="field full">
+                <label>Item Image</label>
+                <div class="img-input-row">
+                  <input type="text" id="f-image-url" placeholder="Paste image URL, or upload a file &rarr;">
+                  <label class="btn upload-btn" for="f-image-file">Upload File</label>
+                  <input type="file" id="f-image-file" accept="image/*" class="hidden">
+                </div>
+                <div class="img-preview" id="add-img-preview"><span>No image selected</span></div>
+              </div>
             </div>
-          </div>
-          <datalist id="heroSuggest"></datalist>
-          <div class="field"><label>Item Name</label><input type="text" id="alItemName" placeholder="e.g. Demon Eater"></div>
-          <div class="field"><label>Image URL</label><input type="text" id="alImage" placeholder="Paste a hero/item image URL"></div>
-          <div class="field"><label>Price (coins)</label><input type="number" id="alPrice" min="1" placeholder="e.g. 850"></div>
-          <div class="field"><label>Short Description</label><textarea id="alDesc" rows="3" placeholder="Describe the transformation, lore or effects…"></textarea></div>
-          <button class="btn btn-primary" id="alSubmitBtn" type="submit">Publish Listing</button>
-        </form>
-      </div>
-    </section>
-
-    <!-- ===== MY LISTINGS ===== -->
-    <section id="view-myListings" class="view hidden">
-      <div class="view-head"><div><h2>My Listings</h2><p>Manage the items you've posted for sale.</p></div></div>
-      <div class="grid" id="myListingsGrid"></div>
-    </section>
-
-    <!-- ===== WISHLIST ===== -->
-    <section id="view-wishlist" class="view hidden">
-      <div class="view-head"><div><h2>Wishlist</h2><p>Items you're keeping an eye on.</p></div></div>
-      <div class="grid" id="wishlistGrid"></div>
-    </section>
-
-    <!-- ===== CART ===== -->
-    <section id="view-cart" class="view hidden">
-      <div class="view-head"><div><h2>Your Cart</h2><p>Review before checkout.</p></div></div>
-      <div class="cart-layout">
-        <div id="cartList"></div>
-        <div class="panel">
-          <h3 style="font-family:var(--font-display); margin-bottom:14px;">Order Summary</h3>
-          <div class="summary-line"><span>Items</span><span id="cartCount">0</span></div>
-          <div class="summary-line"><span>Subtotal</span><span id="cartSubtotal">0 coins</span></div>
-          <div class="summary-line total"><span>Total</span><b id="cartTotal">0 coins</b></div>
-          <button class="btn btn-gold btn-block" style="margin-top:16px;" id="checkoutBtn">Checkout</button>
-          <p style="font-size:11.5px; color:var(--text-dim); margin-top:10px;">Balance: <b id="cartBalance" style="color:var(--gold-br);">0</b> coins</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== ORDERS ===== -->
-    <section id="view-orders" class="view hidden">
-      <div class="view-head"><div><h2>Order History</h2><p>Everything you've purchased from the Cache.</p></div></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Item</th><th>Hero</th><th>Type</th><th>Price</th><th>Date</th></tr></thead>
-          <tbody id="ordersBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ===== PROFILE ===== -->
-    <section id="view-profile" class="view hidden">
-      <div class="view-head"><div><h2>My Profile</h2><p>Your account details, synced live with Firebase.</p></div></div>
-      <div class="stats-grid">
-        <div class="stat-card"><b id="statListings">0</b><span>Active Listings</span></div>
-        <div class="stat-card"><b id="statOrders">0</b><span>Total Purchases</span></div>
-        <div class="stat-card"><b id="statWishlist">0</b><span>Wishlisted</span></div>
-        <div class="stat-card"><b id="statCart">0</b><span>In Cart</span></div>
-      </div>
-      <div class="profile-grid">
-        <div class="panel profile-card">
-          <div class="big-avatar" id="profAvatar">?</div>
-          <h3 id="profName">—</h3>
-          <div class="email" id="profEmail">—</div>
-          <div class="since" id="profSince">Member since —</div>
-          <div class="divider"></div>
-          <div class="stat-list">
-            <div class="stat-row"><span>Coin Balance</span><b id="profCoins">0</b></div>
-          </div>
-          <button class="btn btn-gold btn-block" style="margin-top:18px;" id="topUpBtn">+ 500 Coins (Top Up)</button>
-        </div>
-        <div class="panel">
-          <h3 style="font-family:var(--font-display); margin-bottom:16px;">Edit Account</h3>
-          <form onsubmit="return false;" class="edit-form" id="editProfileForm">
-            <div class="field"><label>Display Name</label><input type="text" id="editUsername"></div>
-            <div class="field"><label>Email</label><input type="email" id="editEmail"></div>
-            <button class="btn btn-primary" type="submit" id="saveProfileBtn">Save Changes</button>
+            <div class="form-actions">
+              <button type="reset" class="btn btn-ghost" id="add-reset-btn">Clear Form</button>
+              <button type="submit" class="btn btn-primary" id="add-submit-btn">Add Item to Marketplace</button>
+            </div>
           </form>
         </div>
-      </div>
-    </section>
+      </section>
 
-  </main>
+      <!-- ===== STOCK MANAGER VIEW ===== -->
+      <section class="view hidden" id="view-stock" data-view-root>
+        <div class="toolbar">
+          <div class="search-wrap"><svg><use href="#i-search"/></svg><input type="text" placeholder="Search all listings..." data-search="stock"></div>
+          <div class="chip-group">
+            <button class="chip active" data-stockfilter="all">All</button>
+            <button class="chip" data-stockfilter="immortal">Immortal</button>
+            <button class="chip" data-stockfilter="arcana">Arcana</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Item</th><th>Rarity</th><th>Price</th><th>Stock Left</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="stock-table-body"></tbody>
+          </table>
+        </div>
+      </section>
 
-  <footer>ANCIENT <span>CACHE</span> — a fan-made Dota 2 marketplace demo · data persisted via Firebase Realtime Database</footer>
-</div>
+      <!-- ===== SOLD OUT ARCHIVE VIEW ===== -->
+      <section class="view hidden" id="view-soldout" data-view-root>
+        <div class="item-grid" id="grid-soldout"></div>
+      </section>
 
-<!-- ============ EDIT LISTING MODAL ============ -->
-<div id="editModal" class="modal-overlay hidden">
-  <div class="modal-box">
-    <h3>Edit Listing</h3>
-    <form onsubmit="return false;" class="edit-form">
-      <input type="hidden" id="editListingId">
-      <div class="grid-2">
-        <div class="field"><label>Hero Name</label><input type="text" id="editHeroName"></div>
-        <div class="field"><label>Item Type</label><select id="editType"><option value="Arcana">Arcana</option><option value="Persona">Persona</option></select></div>
-      </div>
-      <div class="field"><label>Item Name</label><input type="text" id="editItemName"></div>
-      <div class="field"><label>Image URL</label><input type="text" id="editImage"></div>
-      <div class="field"><label>Price (coins)</label><input type="number" id="editPrice" min="1"></div>
-      <div class="field"><label>Description</label><textarea id="editDesc" rows="3"></textarea></div>
-    </form>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="cancelEditBtn">Cancel</button>
-      <button class="btn btn-primary" id="saveEditBtn">Save Changes</button>
+      <!-- ===== SETTINGS VIEW ===== -->
+      <section class="view hidden" id="view-settings" data-view-root>
+        <div class="panel settings-card">
+          <div class="panel-head"><h2>Account Settings</h2></div>
+          <div class="settings-row">
+            <div class="settings-row-info"><h4>Signed in as</h4><p id="settings-username">&mdash;</p></div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info"><h4>Change Password</h4><p>Update your admin password</p></div>
+            <button class="btn btn-ghost btn-sm" id="open-change-pw">Change</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info"><h4>Log Out</h4><p>End your current session</p></div>
+            <button class="btn btn-danger btn-sm" id="settings-logout-btn">Log Out</button>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 </div>
 
+<!-- ============================= MODALS ============================= -->
+<div id="modal-root"></div>
+<div id="toast-stack"></div>
+
 <script>
-/* =========================================================================================
-   ANCIENT CACHE — app.js
-   Firebase Realtime Database REST integration (no SDK needed — pure fetch)
-   ========================================================================================= */
-const DB_URL = "https://dota-7c648-default-rtdb.firebaseio.com";
+(function(){
 
-/* ---------- tiny REST helpers ---------- */
-async function dbGet(path){
-  const res = await fetch(`${DB_URL}/${path}.json`);
-  if(!res.ok) throw new Error("DB read failed: "+path);
-  return res.json();
-}
-async function dbSet(path, data){
-  const res = await fetch(`${DB_URL}/${path}.json`, { method:"PUT", body: JSON.stringify(data) });
-  if(!res.ok) throw new Error("DB write failed: "+path);
-  return res.json();
-}
-async function dbPush(path, data){
-  const res = await fetch(`${DB_URL}/${path}.json`, { method:"POST", body: JSON.stringify(data) });
-  if(!res.ok) throw new Error("DB push failed: "+path);
-  return res.json(); // {name: "-Nxxxx"}
-}
-async function dbUpdate(path, data){
-  const res = await fetch(`${DB_URL}/${path}.json`, { method:"PATCH", body: JSON.stringify(data) });
-  if(!res.ok) throw new Error("DB update failed: "+path);
-  return res.json();
-}
-async function dbDelete(path){
-  const res = await fetch(`${DB_URL}/${path}.json`, { method:"DELETE" });
-  if(!res.ok) throw new Error("DB delete failed: "+path);
-  return res.json();
-}
-async function sha256(str){
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-function sanitizeKey(str){
-  return String(str).trim().toLowerCase().replace(/[.#$\[\]\/\s]+/g,"_");
-}
-function esc(str){
-  const d = document.createElement("div"); d.textContent = str==null?"":String(str); return d.innerHTML;
-}
-function fmtDate(ts){
-  const d = new Date(ts);
-  return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
-}
+/* ============================================================
+   FIREBASE INIT
+   ============================================================ */
+const firebaseConfig = {
+  databaseURL: "https://dota-7c648-default-rtdb.firebaseio.com/"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const adminsRef = db.ref('admins');
+const itemsRef = db.ref('items');
 
-/* ---------- toast ---------- */
-function toast(msg, type="ok"){
-  const stack = document.getElementById("toastStack");
-  const t = document.createElement("div");
-  t.className = "toast "+(type==="ok"?"ok":"err");
-  t.textContent = msg;
-  stack.appendChild(t);
-  setTimeout(()=>{ t.style.opacity="0"; t.style.transition="opacity .3s"; setTimeout(()=>t.remove(),300); }, 3200);
+/* ============================================================
+   UTIL
+   ============================================================ */
+async function sha256(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+function toast(msg, type){
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  document.getElementById('toast-stack').appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+function money(n){
+  n = Number(n) || 0;
+  return '$' + n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : String(str);
+  return d.innerHTML;
+}
+function placeArchSvg(){
+  return document.getElementById('tpl-logo').content.cloneNode(true);
+}
+document.querySelectorAll('.logo-slot').forEach(slot => slot.appendChild(placeArchSvg()));
+
+function fileToDataURL(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
-/* ---------- seed hero data (18 heroes with Arcana / Persona items) ---------- */
-const HERO_IMG = key => `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${key}.png`;
-const SEED_ITEMS = [
-  { heroName:"Shadow Fiend", heroKey:"nevermore", itemType:"Arcana", itemName:"Demon Eater", price:1450, description:"Reforges Nevermore's ranged attack into a searing barrage of flaming skulls, remaking the Nether's dread lord as a true demon of fire." },
-  { heroName:"Wraith King", heroKey:"skeleton_king", itemType:"Persona", itemName:"Legacy of the Lich Lord", price:1290, description:"Strips away Ostarion's bone armor to reveal the tormented king beneath — a haunting reimagining of his ability effects and voice lines." },
-  { heroName:"Windranger", heroKey:"windrunner", itemType:"Arcana", itemName:"Sand and Sky", price:1099, description:"Sends Lyralei soaring on hawk-wings between shots, replacing her abilities with sweeping avian aerobatics and a sharper bow." },
-  { heroName:"Spectre", heroKey:"spectre", itemType:"Arcana", itemName:"Haunted Phantasmagoria", price:1620, description:"Turns Mercurial into a nightmare-glass reflection, her Haunt illusions rendered as shattering, spectral fragments of herself." },
-  { heroName:"Phantom Assassin", heroKey:"phantom_assassin", itemType:"Arcana", itemName:"Strike of the Bladeforged", price:1750, description:"An ancient bladeforged spirit possesses Mortred, reforging her into a swirling dance of crescent blades and phantom strikes." },
-  { heroName:"Juggernaut", heroKey:"juggernaut", itemType:"Arcana", itemName:"Bladeform Legacy", price:1380, description:"Yurnero abandons his armor for a lighter, swifter form — his ultimate becomes a flurry of aerial blade-spin finishers." },
-  { heroName:"Faceless Void", heroKey:"faceless_void", itemType:"Arcana", itemName:"Endless Night", price:990, description:"Darkterror's carapace splits open to a starlit void, and Chronosphere warps space into a rippling field of frozen constellations." },
-  { heroName:"Terrorblade", heroKey:"terrorblade", itemType:"Arcana", itemName:"The Deicidal Duelist", price:1540, description:"A demon-forged blade fuses with Terrorblade, sharpening Metamorphosis into a more monstrous, twin-bladed nightmare." },
-  { heroName:"Legion Commander", heroKey:"legion_commander", itemType:"Arcana", itemName:"Prestige of the Bladed Vow", price:1220, description:"Tresdin's armor is remade in gilded ceremonial plate, her Duel challenge now sealed with a burning oath of steel." },
-  { heroName:"Monkey King", heroKey:"monkey_king", itemType:"Arcana", itemName:"Jungle Fury", price:1080, description:"Sun Wukong channels his full mischief, reworking his clone tricks and Wukong's Command into an acrobatic jungle spectacle." },
-  { heroName:"Drow Ranger", heroKey:"drow_ranger", itemType:"Arcana", itemName:"Dark Artistry", price:1150, description:"Traxex trades her cloak for frost-forged armor, her Marksmanship arrows now trailing glacial light with every shot." },
-  { heroName:"Earthshaker", heroKey:"earthshaker", itemType:"Arcana", itemName:"Tectonic Fury", price:940, description:"Raigor's totem splits the earth itself — Echo Slam and Fissure erupt with jagged obsidian shards and thunderous new sound design." },
-  { heroName:"Pudge", heroKey:"pudge", itemType:"Arcana", itemName:"Chop, Chop!", price:1310, description:"The butcher's hook is reforged into a rusted meat-cleaver chain, and his Rot leaves a trail of rendered flesh in its wake." },
-  { heroName:"Queen of Pain", heroKey:"queenofpain", itemType:"Arcana", itemName:"Talon of the Bloodfeather", price:1470, description:"Akasha's wings unfurl into razor feathers, her Scream of Pain rippling out as a shockwave of crimson plumage." },
-  { heroName:"Invoker", heroKey:"invoker", itemType:"Persona", itemName:"The Prodigal Exile", price:1890, description:"A younger Carl the Invoker, brash and untested — every orb and invoked spell is rebuilt with youthful, reckless energy." },
-  { heroName:"Mirana", heroKey:"mirana", itemType:"Persona", itemName:"Priestess Reforged", price:1350, description:"The moon princess sheds her armor for ceremonial priestess robes, Sacred Arrow now loosed with lunar-blessed precision." },
-  { heroName:"Death Prophet", heroKey:"death_prophet", itemType:"Persona", itemName:"Krobelus, Herald of the Reaper", price:1180, description:"Krobelus embraces her banshee heritage fully — Exorcism spirits become tormented wraiths wailing across the battlefield." },
-  { heroName:"Vengeful Spirit", heroKey:"vengefulspirit", itemType:"Arcana", itemName:"Wings of the Vengeance", price:1050, description:"Shendelzare's wraith form gains full spectral wings, her Nether Swap and Magic Missile trailing violet vengeance-fire." }
-];
+/* ============================================================
+   STATE
+   ============================================================ */
+let currentAdmin = null;   // { key, username }
+let allItems = {};          // { id: {..item} }
+let currentView = 'dashboard';
+let editingItemId = null;
 
-/* ---------- app state ---------- */
-let currentUser = null;      // {key, username, email, coins, createdAt}
-let listingsCache = [];      // array of {id, ...fields}
-let wishlistSet = new Set();
-let cartSet = new Set();
-let ordersCache = [];
-let currentView = "marketplace";
-let typeFilterVal = "all";
-
-/* =========================================================================================
-   INIT
-   ========================================================================================= */
-async function init(){
-  try{
-    await seedIfEmpty();
-  }catch(e){ console.warn("Seed check failed (non-fatal):", e); }
-  document.getElementById("loadingScreen").classList.add("hidden");
-  document.getElementById("authScreen").classList.remove("hidden");
-  bindAuthEvents();
-  bindAppEvents();
-  populateHeroDatalist();
+/* ============================================================
+   AUTH: LOGIN / REGISTER
+   ============================================================ */
+const authError = document.getElementById('auth-error');
+function showAuthError(msg){
+  authError.textContent = msg;
+  authError.classList.add('show');
 }
-async function seedIfEmpty(){
-  const existing = await dbGet("listings");
-  if(existing) return;
-  for(const item of SEED_ITEMS){
-    await dbPush("listings", {
-      ...item,
-      image: HERO_IMG(item.heroKey),
-      ownerId: "system",
-      ownerName: "Ancient Cache",
-      createdAt: Date.now() - Math.floor(Math.random()*1000*60*60*24*20)
-    });
+function clearAuthError(){
+  authError.classList.remove('show');
+  authError.textContent = '';
+}
+
+document.getElementById('show-register').addEventListener('click', () => {
+  clearAuthError();
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('register-form').classList.remove('hidden');
+});
+document.getElementById('show-login').addEventListener('click', () => {
+  clearAuthError();
+  document.getElementById('register-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearAuthError();
+  const username = document.getElementById('reg-username').value.trim().toLowerCase();
+  const pw = document.getElementById('reg-password').value;
+  const pw2 = document.getElementById('reg-password2').value;
+  const btn = document.getElementById('register-submit-btn');
+
+  if(!/^[a-z0-9_\.]{3,24}$/.test(username)){
+    showAuthError('Username must be 3-24 characters: letters, numbers, underscore or dot only.');
+    return;
   }
-}
-function populateHeroDatalist(){
-  const dl = document.getElementById("heroSuggest");
-  dl.innerHTML = SEED_ITEMS.map(h=>`<option value="${esc(h.heroName)}">`).join("");
-}
-
-/* =========================================================================================
-   AUTH — Register / Login / Logout   (CRUD: Create + Read on /users)
-   ========================================================================================= */
-function bindAuthEvents(){
-  document.getElementById("tabLoginBtn").onclick = ()=>switchAuthTab("login");
-  document.getElementById("tabRegisterBtn").onclick = ()=>switchAuthTab("register");
-  document.getElementById("gotoRegister").onclick = (e)=>{e.preventDefault(); switchAuthTab("register");};
-  document.getElementById("gotoLogin").onclick = (e)=>{e.preventDefault(); switchAuthTab("login");};
-  document.getElementById("loginSubmitBtn").onclick = doLogin;
-  document.getElementById("registerSubmitBtn").onclick = doRegister;
-  document.getElementById("logoutBtn").onclick = doLogout;
-}
-function switchAuthTab(which){
-  const isLogin = which==="login";
-  document.getElementById("tabLoginBtn").classList.toggle("active", isLogin);
-  document.getElementById("tabRegisterBtn").classList.toggle("active", !isLogin);
-  document.getElementById("loginForm").classList.toggle("hidden", !isLogin);
-  document.getElementById("registerForm").classList.toggle("hidden", isLogin);
-  document.getElementById("loginError").style.display="none";
-  document.getElementById("registerError").style.display="none";
-}
-function showAuthError(id,msg){
-  const el = document.getElementById(id);
-  el.textContent = msg; el.style.display="block";
-}
-async function doRegister(){
-  const username = document.getElementById("regUsername").value.trim();
-  const email = document.getElementById("regEmail").value.trim();
-  const pass = document.getElementById("regPassword").value;
-  const pass2 = document.getElementById("regPassword2").value;
-  document.getElementById("registerError").style.display="none";
-
-  if(!username || !email || !pass){ return showAuthError("registerError","Please fill in all fields."); }
-  if(pass.length < 6){ return showAuthError("registerError","Password must be at least 6 characters."); }
-  if(pass !== pass2){ return showAuthError("registerError","Passwords do not match."); }
-
-  const btn = document.getElementById("registerSubmitBtn");
-  btn.textContent = "Creating account…"; btn.disabled = true;
-  try{
-    const key = sanitizeKey(username);
-    const existing = await dbGet(`users/${key}`);
-    if(existing){ showAuthError("registerError","That username is already taken."); return; }
-
-    const passwordHash = await sha256(pass);
-    const userObj = { username, email, passwordHash, coins: 2500, createdAt: Date.now() };
-    await dbSet(`users/${key}`, userObj);
-    currentUser = { key, ...userObj };
-    toast(`Welcome, ${username}! Account created.`);
-    await enterApp();
-  }catch(e){
-    console.error(e);
-    showAuthError("registerError","Something went wrong. Check your connection and try again.");
-  }finally{
-    btn.textContent = "Create Account"; btn.disabled = false;
+  if(pw !== pw2){
+    showAuthError('Passwords do not match.');
+    return;
   }
-}
-async function doLogin(){
-  const username = document.getElementById("loginUsername").value.trim();
-  const pass = document.getElementById("loginPassword").value;
-  document.getElementById("loginError").style.display="none";
-  if(!username || !pass){ return showAuthError("loginError","Enter your username and password."); }
-
-  const btn = document.getElementById("loginSubmitBtn");
-  btn.textContent = "Signing in…"; btn.disabled = true;
+  btn.disabled = true; btn.textContent = 'Creating account...';
   try{
-    const key = sanitizeKey(username);
-    const userObj = await dbGet(`users/${key}`);
-    if(!userObj){ showAuthError("loginError","No account found with that username."); return; }
-    const passwordHash = await sha256(pass);
-    if(passwordHash !== userObj.passwordHash){ showAuthError("loginError","Incorrect password."); return; }
-    currentUser = { key, ...userObj };
-    toast(`Welcome back, ${userObj.username}!`);
-    await enterApp();
-  }catch(e){
-    console.error(e);
-    showAuthError("loginError","Something went wrong. Check your connection and try again.");
-  }finally{
-    btn.textContent = "Enter the Cache"; btn.disabled = false;
+    const snap = await adminsRef.orderByChild('username').equalTo(username).once('value');
+    if(snap.exists()){
+      showAuthError('That username is already taken.');
+      btn.disabled = false; btn.textContent = 'Create Admin Account';
+      return;
+    }
+    const passwordHash = await sha256(pw);
+    const newRef = adminsRef.push();
+    await newRef.set({ username, passwordHash, createdAt: Date.now() });
+    currentAdmin = { key: newRef.key, username };
+    toast('Admin account created. Welcome, ' + username + '.', 'ok');
+    enterApp();
+  }catch(err){
+    showAuthError('Could not reach the database. ' + (err && err.message ? err.message : ''));
+    btn.disabled = false; btn.textContent = 'Create Admin Account';
   }
+});
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearAuthError();
+  const username = document.getElementById('login-username').value.trim().toLowerCase();
+  const pw = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-submit-btn');
+  btn.disabled = true; btn.textContent = 'Verifying...';
+  try{
+    const snap = await adminsRef.orderByChild('username').equalTo(username).once('value');
+    if(!snap.exists()){
+      showAuthError('No admin found with that username.');
+      btn.disabled = false; btn.textContent = 'Enter the Reliquary';
+      return;
+    }
+    let matchKey = null, matchVal = null;
+    snap.forEach(child => { matchKey = child.key; matchVal = child.val(); });
+    const passwordHash = await sha256(pw);
+    if(passwordHash !== matchVal.passwordHash){
+      showAuthError('Incorrect password.');
+      btn.disabled = false; btn.textContent = 'Enter the Reliquary';
+      return;
+    }
+    currentAdmin = { key: matchKey, username: matchVal.username };
+    toast('Welcome back, ' + matchVal.username + '.', 'ok');
+    enterApp();
+  }catch(err){
+    showAuthError('Could not reach the database. ' + (err && err.message ? err.message : ''));
+    btn.disabled = false; btn.textContent = 'Enter the Reliquary';
+  }
+});
+
+function enterApp(){
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('hidden');
+  document.getElementById('admin-name-display').textContent = currentAdmin.username;
+  document.getElementById('admin-avatar').textContent = currentAdmin.username.charAt(0).toUpperCase();
+  document.getElementById('settings-username').textContent = currentAdmin.username;
+  startItemsListener();
 }
 function doLogout(){
-  currentUser = null; listingsCache=[]; wishlistSet=new Set(); cartSet=new Set(); ordersCache=[];
-  document.getElementById("app").classList.add("hidden");
-  document.getElementById("authScreen").classList.remove("hidden");
-  document.getElementById("loginUsername").value="";
-  document.getElementById("loginPassword").value="";
-  toast("You have been logged out.");
+  currentAdmin = null;
+  document.getElementById('app-shell').classList.add('hidden');
+  document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('login-form').reset();
+  document.getElementById('register-form').reset();
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('register-form').classList.add('hidden');
+  toast('Logged out.', 'ok');
 }
+document.getElementById('logout-btn').addEventListener('click', doLogout);
+document.getElementById('settings-logout-btn').addEventListener('click', doLogout);
 
-/* =========================================================================================
-   ENTER APP
-   ========================================================================================= */
-async function enterApp(){
-  document.getElementById("authScreen").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  renderUserChrome();
-  await Promise.all([ loadListings(), loadWishlist(), loadCart(), loadOrders() ]);
-  switchView("marketplace");
-}
-function renderUserChrome(){
-  const initials = currentUser.username.slice(0,2).toUpperCase();
-  document.getElementById("topAvatar").textContent = initials;
-  document.getElementById("topUsername").textContent = currentUser.username;
-  document.getElementById("topCoins").textContent = currentUser.coins.toLocaleString();
-}
-
-/* =========================================================================================
+/* ============================================================
    NAVIGATION
-   ========================================================================================= */
-function bindAppEvents(){
-  document.querySelectorAll(".navbtn").forEach(btn=>{
-    btn.onclick = ()=>switchView(btn.dataset.view);
-  });
-  document.getElementById("userChipBtn").onclick = ()=>switchView("profile");
+   ============================================================ */
+const viewTitles = {
+  dashboard: ['Dashboard', 'Overview of the whole reliquary'],
+  immortal:  ['Immortal Skins', 'Top-tier relics currently listed'],
+  arcana:    ['Arcana Skins', 'Evolving hero-exclusive relics'],
+  add:       ['Add New Item', 'List a new skin on the marketplace'],
+  stock:     ['Manage Stock', 'Update quantities, price and status'],
+  soldout:   ['Sold Out Archive', 'Relics fully reclaimed by buyers'],
+  settings:  ['Account Settings', 'Manage your admin session']
+};
 
-  document.getElementById("searchInput").addEventListener("input", renderMarketplace);
-  document.getElementById("sortSelect").addEventListener("change", renderMarketplace);
-  document.getElementById("typeFilter").addEventListener("click",(e)=>{
-    if(e.target.tagName!=="BUTTON") return;
-    document.querySelectorAll("#typeFilter button").forEach(b=>b.classList.remove("active"));
-    e.target.classList.add("active");
-    typeFilterVal = e.target.dataset.type;
-    renderMarketplace();
-  });
-
-  document.getElementById("alSubmitBtn").onclick = handleAddListing;
-  document.getElementById("topUpBtn").onclick = handleTopUp;
-  document.getElementById("saveProfileBtn").onclick = handleSaveProfile;
-  document.getElementById("checkoutBtn").onclick = handleCheckout;
-
-  document.getElementById("cancelEditBtn").onclick = ()=>document.getElementById("editModal").classList.add("hidden");
-  document.getElementById("saveEditBtn").onclick = handleSaveEdit;
-}
-function switchView(view){
+function setView(view){
   currentView = view;
-  document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
-  document.getElementById("view-"+view).classList.remove("hidden");
-  document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+  document.querySelectorAll('[data-view-root]').forEach(v => v.classList.add('hidden'));
+  document.getElementById('view-' + view).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+  document.getElementById('topbar-title').textContent = viewTitles[view][0];
+  document.getElementById('topbar-sub').textContent = viewTitles[view][1];
+  document.getElementById('sidebar').classList.remove('open');
+  renderAll();
+}
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', (e) => { e.preventDefault(); setView(item.dataset.view); });
+});
+document.getElementById('topbar-add-btn').addEventListener('click', () => setView('add'));
+document.getElementById('menu-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
 
-  if(view==="marketplace") renderMarketplace();
-  if(view==="myListings") renderMyListings();
-  if(view==="wishlist") renderWishlist();
-  if(view==="cart") renderCart();
-  if(view==="orders") renderOrders();
-  if(view==="profile") renderProfile();
-}
-
-/* =========================================================================================
-   LISTINGS — Read (marketplace) + Create/Update/Delete (my listings)
-   ========================================================================================= */
-async function loadListings(){
-  const data = await dbGet("listings");
-  listingsCache = data ? Object.entries(data).map(([id,v])=>({id,...v})) : [];
-}
-function cardTemplate(item){
-  const isOwner = item.ownerId === currentUser.key;
-  const inWish = wishlistSet.has(item.id);
-  const inCart = cartSet.has(item.id);
-  return `
-  <div class="card chamfer" data-id="${item.id}">
-    <span class="ribbon ${item.itemType.toLowerCase()}">${esc(item.itemType)}</span>
-    <div class="imgwrap"><img src="${esc(item.image)}" alt="${esc(item.itemName)}" loading="lazy" onerror="this.src='https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/unknown.png'"></div>
-    <div class="body">
-      <div class="hero-name">${esc(item.heroName)}</div>
-      <div class="item-name">${esc(item.itemName)}</div>
-      <div class="desc">${esc(item.description)}</div>
-      <div class="meta-row">
-        <div class="price-tag">${item.price.toLocaleString()} <small>coins</small></div>
-      </div>
-      <div class="owner-line">Sold by ${esc(item.ownerName)}</div>
-    </div>
-    <div class="actions">
-      ${isOwner
-        ? `<button class="btn btn-ghost btn-sm editBtn">Edit</button><button class="btn btn-danger btn-sm delBtn">Delete</button>`
-        : `<button class="btn btn-primary btn-sm cartBtn">${inCart ? "In Cart ✓" : "Add to Cart"}</button>
-           <button class="iconbtn ${inWish?'on':''} wishBtn" title="Wishlist">${inWish?'❤️':'🤍'}</button>`
-      }
-    </div>
-  </div>`;
-}
-function renderMarketplace(){
-  const q = document.getElementById("searchInput").value.trim().toLowerCase();
-  const sort = document.getElementById("sortSelect").value;
-  let items = listingsCache.filter(it=>{
-    const matchQ = !q || it.heroName.toLowerCase().includes(q) || it.itemName.toLowerCase().includes(q);
-    const matchType = typeFilterVal==="all" || it.itemType===typeFilterVal;
-    return matchQ && matchType;
-  });
-  if(sort==="priceLow") items.sort((a,b)=>a.price-b.price);
-  else if(sort==="priceHigh") items.sort((a,b)=>b.price-a.price);
-  else if(sort==="az") items.sort((a,b)=>a.itemName.localeCompare(b.itemName));
-  else items.sort((a,b)=>b.createdAt-a.createdAt);
-
-  const grid = document.getElementById("marketGrid");
-  if(items.length===0){
-    grid.innerHTML = `<div class="empty-state"><div class="glyph">🔍</div><h3>No items found</h3><p>Try a different search or filter.</p></div>`;
-    return;
-  }
-  grid.innerHTML = items.map(cardTemplate).join("");
-  attachCardHandlers(grid);
-}
-function renderMyListings(){
-  const mine = listingsCache.filter(it=>it.ownerId===currentUser.key);
-  const grid = document.getElementById("myListingsGrid");
-  if(mine.length===0){
-    grid.innerHTML = `<div class="empty-state"><div class="glyph">📦</div><h3>You haven't listed anything yet</h3><p>Post your first Arcana or Persona to the Cache.</p><button class="btn btn-gold" onclick="switchView('addListing')">Add a Listing</button></div>`;
-    return;
-  }
-  grid.innerHTML = mine.map(cardTemplate).join("");
-  attachCardHandlers(grid);
-}
-function attachCardHandlers(container){
-  container.querySelectorAll(".card").forEach(card=>{
-    const id = card.dataset.id;
-    const item = listingsCache.find(i=>i.id===id);
-    const editBtn = card.querySelector(".editBtn");
-    const delBtn = card.querySelector(".delBtn");
-    const cartBtn = card.querySelector(".cartBtn");
-    const wishBtn = card.querySelector(".wishBtn");
-    if(editBtn) editBtn.onclick = ()=>openEditModal(item);
-    if(delBtn) delBtn.onclick = ()=>handleDeleteListing(item);
-    if(cartBtn) cartBtn.onclick = ()=>toggleCart(item.id);
-    if(wishBtn) wishBtn.onclick = ()=>toggleWishlist(item.id);
+/* ============================================================
+   ITEMS: REALTIME LISTENER
+   ============================================================ */
+function startItemsListener(){
+  itemsRef.on('value', (snap) => {
+    allItems = snap.val() || {};
+    renderAll();
+  }, (err) => {
+    toast('Database error: ' + err.message, 'err');
   });
 }
 
-async function handleAddListing(){
-  const heroName = document.getElementById("alHeroName").value.trim();
-  const itemType = document.getElementById("alType").value;
-  const itemName = document.getElementById("alItemName").value.trim();
-  let image = document.getElementById("alImage").value.trim();
-  const price = parseInt(document.getElementById("alPrice").value,10);
-  const description = document.getElementById("alDesc").value.trim();
+function itemsArray(){
+  return Object.keys(allItems).map(id => ({ id, ...allItems[id] }));
+}
+function statusOf(item){
+  const stock = Number(item.stock) || 0;
+  if(stock <= 0) return 'out';
+  if(stock <= 3) return 'low';
+  return 'in';
+}
+function statusBadge(item){
+  const s = statusOf(item);
+  if(s === 'out') return '<span class="badge badge-out">Sold Out</span>';
+  if(s === 'low') return '<span class="badge badge-low">Dwindling &middot; ' + item.stock + ' left</span>';
+  return '<span class="badge badge-in">' + item.stock + ' left</span>';
+}
+function rarityBadge(type){
+  return type === 'immortal'
+    ? '<span class="badge badge-immortal">Immortal</span>'
+    : '<span class="badge badge-arcana">Arcana</span>';
+}
 
-  if(!heroName || !itemName || !price || !description){
-    toast("Please fill in all fields before publishing.","err"); return;
-  }
-  if(!image){
-    const seedMatch = SEED_ITEMS.find(h=>h.heroName.toLowerCase()===heroName.toLowerCase());
-    image = seedMatch ? HERO_IMG(seedMatch.heroKey) : "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/unknown.png";
-  }
-  const btn = document.getElementById("alSubmitBtn");
-  btn.textContent = "Publishing…"; btn.disabled = true;
-  try{
-    const payload = { heroName, itemType, itemName, image, price, description, ownerId: currentUser.key, ownerName: currentUser.username, createdAt: Date.now() };
-    const res = await dbPush("listings", payload);
-    listingsCache.push({ id: res.name, ...payload });
-    toast("Listing published to the Cache!");
-    document.getElementById("addListingForm").reset();
-    switchView("myListings");
-  }catch(e){
-    console.error(e); toast("Failed to publish listing. Try again.","err");
-  }finally{
-    btn.textContent = "Publish Listing"; btn.disabled = false;
-  }
+/* ============================================================
+   RENDER: ALL
+   ============================================================ */
+function renderAll(){
+  if(!currentAdmin) return;
+  const items = itemsArray();
+  renderCounts(items);
+  if(currentView === 'dashboard') renderDashboard(items);
+  if(currentView === 'immortal') renderGrid('grid-immortal', items.filter(i => i.type === 'immortal'), gridSearchVal('immortal'));
+  if(currentView === 'arcana') renderGrid('grid-arcana', items.filter(i => i.type === 'arcana'), gridSearchVal('arcana'));
+  if(currentView === 'stock') renderStockTable(items);
+  if(currentView === 'soldout') renderGrid('grid-soldout', items.filter(i => statusOf(i) === 'out'), gridSearchVal('stock'), true);
 }
-function openEditModal(item){
-  document.getElementById("editListingId").value = item.id;
-  document.getElementById("editHeroName").value = item.heroName;
-  document.getElementById("editType").value = item.itemType;
-  document.getElementById("editItemName").value = item.itemName;
-  document.getElementById("editImage").value = item.image;
-  document.getElementById("editPrice").value = item.price;
-  document.getElementById("editDesc").value = item.description;
-  document.getElementById("editModal").classList.remove("hidden");
+
+function gridSearchVal(key){
+  const el = document.querySelector('[data-search="'+key+'"]');
+  return el ? el.value.trim().toLowerCase() : '';
 }
-async function handleSaveEdit(){
-  const id = document.getElementById("editListingId").value;
-  const updates = {
-    heroName: document.getElementById("editHeroName").value.trim(),
-    itemType: document.getElementById("editType").value,
-    itemName: document.getElementById("editItemName").value.trim(),
-    image: document.getElementById("editImage").value.trim(),
-    price: parseInt(document.getElementById("editPrice").value,10),
-    description: document.getElementById("editDesc").value.trim(),
+
+function renderCounts(items){
+  document.getElementById('count-immortal').textContent = items.filter(i => i.type === 'immortal').length;
+  document.getElementById('count-arcana').textContent = items.filter(i => i.type === 'arcana').length;
+  document.getElementById('count-soldout').textContent = items.filter(i => statusOf(i) === 'out').length;
+}
+
+/* ---------------- Dashboard ---------------- */
+function renderDashboard(items){
+  const totalStock = items.reduce((s,i) => s + (statusOf(i) === 'out' ? 0 : Number(i.stock)||0), 0);
+  const soldOutCount = items.filter(i => statusOf(i) === 'out').length;
+  const vaultValue = items.reduce((s,i) => s + ((Number(i.price)||0) * (statusOf(i)==='out'?0:(Number(i.stock)||0))), 0);
+
+  document.getElementById('stat-total').textContent = items.length;
+  document.getElementById('stat-stock').textContent = totalStock;
+  document.getElementById('stat-soldout').textContent = soldOutCount;
+  document.getElementById('stat-value').textContent = money(vaultValue);
+
+  const lowStock = items.filter(i => statusOf(i) === 'low').sort((a,b) => (a.stock||0) - (b.stock||0)).slice(0,6);
+  const lowWrap = document.getElementById('dash-low-list');
+  lowWrap.innerHTML = lowStock.length ? lowStock.map(rowMini).join('') : emptyMiniRow('Nothing is running low right now.');
+
+  const recent = [...items].sort((a,b) => (b.createdAt||0) - (a.createdAt||0)).slice(0,6);
+  const recentWrap = document.getElementById('dash-recent-list');
+  recentWrap.innerHTML = recent.length ? recent.map(rowMini).join('') : emptyMiniRow('No relics listed yet.');
+}
+function emptyMiniRow(text){
+  return '<div style="padding:18px 0; color:var(--muted-dim); font-size:13px; text-align:center;">'+escapeHtml(text)+'</div>';
+}
+function rowMini(item){
+  const img = item.imageUrl ? '<img class="mini-thumb" src="'+item.imageUrl+'" alt="">' : '<div class="mini-thumb"></div>';
+  return '<div class="mini-row">'+img+
+    '<div class="mini-info"><div class="mini-name">'+escapeHtml(item.name)+'</div>'+
+    '<div class="mini-sub">'+escapeHtml(item.hero||'')+'</div></div>'+
+    statusBadge(item)+'</div>';
+}
+
+/* ---------------- Item Grid (Immortal / Arcana / Sold Out) ---------------- */
+function renderGrid(elId, items, search, isArchive){
+  const wrap = document.getElementById(elId);
+  let filtered = items;
+  if(search){
+    filtered = filtered.filter(i => (i.name||'').toLowerCase().includes(search) || (i.hero||'').toLowerCase().includes(search));
+  }
+  if(!filtered.length){
+    wrap.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">'+
+      '<svg width="46" height="46"><use href="#i-empty"/></svg>'+
+      '<h3>'+(isArchive ? 'The archive is empty' : 'No relics here yet')+'</h3>'+
+      '<p>'+(isArchive ? 'Items appear here once their stock reaches zero.' : 'Add your first item from the "Add New Item" section.')+'</p>'+
+      '</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.map(item => cardHtml(item, isArchive)).join('');
+  wrap.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openItemModal(b.dataset.edit)));
+  wrap.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => confirmDelete(b.dataset.delete)));
+  wrap.querySelectorAll('[data-restock]').forEach(b => b.addEventListener('click', () => quickRestock(b.dataset.restock)));
+}
+
+function cardHtml(item, isArchive){
+  const s = statusOf(item);
+  const media = item.imageUrl
+    ? '<img src="'+item.imageUrl+'" alt="'+escapeHtml(item.name)+'">'
+    : '<div class="no-img">No image<br>provided</div>';
+  const rarityTagStyle = item.type === 'immortal'
+    ? 'background:rgba(201,162,75,0.16); color:var(--gold-bright); border:1px solid rgba(201,162,75,0.4);'
+    : 'background:rgba(139,42,50,0.16); color:#E39AA1; border:1px solid rgba(139,42,50,0.4);';
+  return '<div class="item-card">'+
+    '<div class="item-media">'+media+
+      '<span class="item-rarity-tag" style="'+rarityTagStyle+'">'+item.type+'</span>'+
+    '</div>'+
+    '<div class="item-body">'+
+      '<div class="item-hero">'+escapeHtml(item.hero||'&mdash;')+'</div>'+
+      '<div class="item-name">'+escapeHtml(item.name)+'</div>'+
+      '<div class="item-row"><div class="item-price">'+money(item.price)+'</div>'+statusBadge(item)+'</div>'+
+      '<div class="item-actions">'+
+        (isArchive
+          ? '<button class="btn btn-teal btn-sm" data-restock="'+item.id+'" style="flex:1">Restock</button>'
+          : '<button class="btn btn-ghost btn-sm" data-edit="'+item.id+'" style="flex:1"><svg width="12" height="12"><use href="#i-pencil"/></svg>&nbsp; Edit</button>')+
+        '<button class="btn btn-danger btn-sm" data-delete="'+item.id+'"><svg width="12" height="12"><use href="#i-trash"/></svg></button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ---------------- Stock Table ---------------- */
+let stockFilter = 'all';
+document.querySelectorAll('[data-stockfilter]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    stockFilter = chip.dataset.stockfilter;
+    document.querySelectorAll('[data-stockfilter]').forEach(c => c.classList.toggle('active', c === chip));
+    renderAll();
+  });
+});
+function renderStockTable(items){
+  const search = gridSearchVal('stock');
+  let filtered = items;
+  if(stockFilter !== 'all') filtered = filtered.filter(i => i.type === stockFilter);
+  if(search) filtered = filtered.filter(i => (i.name||'').toLowerCase().includes(search) || (i.hero||'').toLowerCase().includes(search));
+
+  const body = document.getElementById('stock-table-body');
+  if(!filtered.length){
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--muted-dim);">No matching items.</td></tr>';
+    return;
+  }
+  body.innerHTML = filtered.map(item => {
+    const img = item.imageUrl ? '<img src="'+item.imageUrl+'" alt="">' : '<img src="" alt="" style="opacity:0;">';
+    return '<tr>'+
+      '<td><div class="td-item">'+img+'<span>'+escapeHtml(item.name)+'</span></div></td>'+
+      '<td>'+rarityBadge(item.type)+'</td>'+
+      '<td>'+money(item.price)+'</td>'+
+      '<td><div class="stepper">'+
+        '<button data-step-down="'+item.id+'">&minus;</button>'+
+        '<span class="val">'+(Number(item.stock)||0)+'</span>'+
+        '<button data-step-up="'+item.id+'">+</button>'+
+      '</div></td>'+
+      '<td>'+statusBadge(item)+'</td>'+
+      '<td style="display:flex; gap:6px;">'+
+        '<button class="btn btn-ghost btn-sm" data-edit="'+item.id+'"><svg width="12" height="12"><use href="#i-pencil"/></svg></button>'+
+        '<button class="btn btn-danger btn-sm" data-delete="'+item.id+'"><svg width="12" height="12"><use href="#i-trash"/></svg></button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+
+  body.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openItemModal(b.dataset.edit)));
+  body.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => confirmDelete(b.dataset.delete)));
+  body.querySelectorAll('[data-step-up]').forEach(b => b.addEventListener('click', () => stepStock(b.dataset.stepUp, 1)));
+  body.querySelectorAll('[data-step-down]').forEach(b => b.addEventListener('click', () => stepStock(b.dataset.stepDown, -1)));
+}
+function stepStock(id, delta){
+  const item = allItems[id];
+  if(!item) return;
+  const next = Math.max(0, (Number(item.stock)||0) + delta);
+  itemsRef.child(id).update({ stock: next, updatedAt: Date.now() });
+}
+function quickRestock(id){
+  const item = allItems[id];
+  if(!item) return;
+  const val = prompt('Restock "'+item.name+'" — enter new stock count:', '5');
+  if(val === null) return;
+  const num = Math.max(0, parseInt(val, 10) || 0);
+  itemsRef.child(id).update({ stock: num, updatedAt: Date.now() });
+  toast(item.name + ' restocked to ' + num + '.', 'ok');
+}
+
+document.querySelectorAll('[data-search]').forEach(inp => inp.addEventListener('input', renderAll));
+
+/* ============================================================
+   ADD ITEM FORM
+   ============================================================ */
+let addImageData = '';
+document.getElementById('f-image-url').addEventListener('input', (e) => {
+  addImageData = e.target.value.trim();
+  updatePreview('add-img-preview', addImageData);
+});
+document.getElementById('f-image-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 1.5*1024*1024){
+    toast('Image too large — please use a file under 1.5MB or paste a URL instead.', 'err');
+    e.target.value = '';
+    return;
+  }
+  addImageData = await fileToDataURL(file);
+  document.getElementById('f-image-url').value = '';
+  updatePreview('add-img-preview', addImageData);
+});
+function updatePreview(elId, src){
+  const el = document.getElementById(elId);
+  el.innerHTML = src ? '<img src="'+src+'" alt="">' : '<span>No image selected</span>';
+}
+document.getElementById('add-reset-btn').addEventListener('click', () => {
+  addImageData = '';
+  setTimeout(() => updatePreview('add-img-preview', ''), 0);
+});
+
+document.getElementById('add-item-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('add-submit-btn');
+  const payload = {
+    name: document.getElementById('f-name').value.trim(),
+    hero: document.getElementById('f-hero').value.trim(),
+    type: document.getElementById('f-type').value,
+    price: parseFloat(document.getElementById('f-price').value) || 0,
+    stock: Math.max(0, parseInt(document.getElementById('f-stock').value, 10) || 0),
+    origin: document.getElementById('f-origin').value.trim(),
+    description: document.getElementById('f-desc').value.trim(),
+    imageUrl: addImageData || '',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    createdBy: currentAdmin.username
   };
-  if(!updates.heroName || !updates.itemName || !updates.price || !updates.description){
-    toast("Please complete all fields.","err"); return;
-  }
+  if(!payload.type){ toast('Please select a rarity.', 'err'); return; }
+  btn.disabled = true; btn.textContent = 'Adding...';
   try{
-    await dbUpdate(`listings/${id}`, updates);
-    const idx = listingsCache.findIndex(i=>i.id===id);
-    if(idx>-1) listingsCache[idx] = { ...listingsCache[idx], ...updates };
-    document.getElementById("editModal").classList.add("hidden");
-    toast("Listing updated.");
-    if(currentView==="myListings") renderMyListings(); else renderMarketplace();
-  }catch(e){
-    console.error(e); toast("Failed to update listing.","err");
+    await itemsRef.push(payload);
+    toast('"'+payload.name+'" added to the marketplace.', 'ok');
+    document.getElementById('add-item-form').reset();
+    addImageData = '';
+    updatePreview('add-img-preview', '');
+    setView(payload.type);
+  }catch(err){
+    toast('Failed to add item: ' + err.message, 'err');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Add Item to Marketplace';
   }
-}
-async function handleDeleteListing(item){
-  if(!confirm(`Remove "${item.itemName}" from the Cache?`)) return;
-  try{
-    await dbDelete(`listings/${item.id}`);
-    listingsCache = listingsCache.filter(i=>i.id!==item.id);
-    toast("Listing deleted.");
-    if(currentView==="myListings") renderMyListings(); else renderMarketplace();
-  }catch(e){
-    console.error(e); toast("Failed to delete listing.","err");
-  }
-}
+});
 
-/* =========================================================================================
-   WISHLIST — Create/Read/Delete on /wishlist/{userKey}
-   ========================================================================================= */
-async function loadWishlist(){
-  const data = await dbGet(`wishlist/${currentUser.key}`);
-  wishlistSet = new Set(data ? Object.keys(data) : []);
-}
-async function toggleWishlist(id){
-  try{
-    if(wishlistSet.has(id)){
-      await dbDelete(`wishlist/${currentUser.key}/${id}`);
-      wishlistSet.delete(id);
-      toast("Removed from wishlist.");
-    }else{
-      await dbSet(`wishlist/${currentUser.key}/${id}`, true);
-      wishlistSet.add(id);
-      toast("Added to wishlist.");
-    }
-    if(currentView==="marketplace") renderMarketplace();
-    if(currentView==="myListings") renderMyListings();
-    if(currentView==="wishlist") renderWishlist();
-  }catch(e){ console.error(e); toast("Wishlist update failed.","err"); }
-}
-function renderWishlist(){
-  const items = listingsCache.filter(i=>wishlistSet.has(i.id));
-  const grid = document.getElementById("wishlistGrid");
-  if(items.length===0){
-    grid.innerHTML = `<div class="empty-state"><div class="glyph">🤍</div><h3>Your wishlist is empty</h3><p>Tap the heart on any item to save it here.</p><button class="btn btn-gold" onclick="switchView('marketplace')">Browse Marketplace</button></div>`;
-    return;
-  }
-  grid.innerHTML = items.map(cardTemplate).join("");
-  attachCardHandlers(grid);
-}
+/* ============================================================
+   EDIT ITEM MODAL
+   ============================================================ */
+const modalRoot = document.getElementById('modal-root');
 
-/* =========================================================================================
-   CART — Create/Read/Delete on /cart/{userKey}, checkout creates /orders + updates coins
-   ========================================================================================= */
-async function loadCart(){
-  const data = await dbGet(`cart/${currentUser.key}`);
-  cartSet = new Set(data ? Object.keys(data) : []);
-}
-async function toggleCart(id){
-  try{
-    if(cartSet.has(id)){
-      await dbDelete(`cart/${currentUser.key}/${id}`);
-      cartSet.delete(id);
-      toast("Removed from cart.");
-    }else{
-      await dbSet(`cart/${currentUser.key}/${id}`, true);
-      cartSet.add(id);
-      toast("Added to cart.");
-    }
-    if(currentView==="marketplace") renderMarketplace();
-    if(currentView==="myListings") renderMyListings();
-    if(currentView==="cart") renderCart();
-  }catch(e){ console.error(e); toast("Cart update failed.","err"); }
-}
-function renderCart(){
-  const items = listingsCache.filter(i=>cartSet.has(i.id));
-  const listEl = document.getElementById("cartList");
-  if(items.length===0){
-    listEl.innerHTML = `<div class="empty-state"><div class="glyph">🛍️</div><h3>Your cart is empty</h3><p>Add items from the Marketplace to purchase them.</p><button class="btn btn-gold" onclick="switchView('marketplace')">Browse Marketplace</button></div>`;
-  }else{
-    listEl.innerHTML = items.map(i=>`
-      <div class="cart-row">
-        <img src="${esc(i.image)}" alt="">
-        <div class="info">
-          <div class="h">${esc(i.heroName)}</div>
-          <div class="n">${esc(i.itemName)}</div>
+function openItemModal(id){
+  const item = allItems[id];
+  if(!item) return;
+  editingItemId = id;
+  let editImageData = item.imageUrl || '';
+
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="edit-overlay">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Edit Relic</h2>
+          <button class="modal-close" id="edit-close">&times;</button>
         </div>
-        <div class="p">${i.price.toLocaleString()}</div>
-        <button class="iconbtn" title="Remove" onclick="toggleCart('${i.id}')">✕</button>
-      </div>`).join("");
-  }
-  const total = items.reduce((s,i)=>s+i.price,0);
-  document.getElementById("cartCount").textContent = items.length;
-  document.getElementById("cartSubtotal").textContent = total.toLocaleString()+" coins";
-  document.getElementById("cartTotal").textContent = total.toLocaleString()+" coins";
-  document.getElementById("cartBalance").textContent = currentUser.coins.toLocaleString();
-}
-async function handleCheckout(){
-  const items = listingsCache.filter(i=>cartSet.has(i.id));
-  if(items.length===0){ toast("Your cart is empty.","err"); return; }
-  const total = items.reduce((s,i)=>s+i.price,0);
-  if(total > currentUser.coins){ toast("Not enough coins to complete checkout.","err"); return; }
+        <form id="edit-item-form">
+          <div class="form-grid">
+            <div class="field"><label>Item Name</label><input type="text" id="e-name" value="${escapeHtml(item.name)}" required></div>
+            <div class="field"><label>Hero</label><input type="text" id="e-hero" value="${escapeHtml(item.hero||'')}" required></div>
+            <div class="field"><label>Rarity</label>
+              <select id="e-type" required>
+                <option value="immortal" ${item.type==='immortal'?'selected':''}>Immortal</option>
+                <option value="arcana" ${item.type==='arcana'?'selected':''}>Arcana</option>
+              </select>
+            </div>
+            <div class="field"><label>Price (USD)</label><input type="number" id="e-price" min="0" step="0.01" value="${Number(item.price)||0}" required></div>
+            <div class="field"><label>Units Left in Stock</label><input type="number" id="e-stock" min="0" step="1" value="${Number(item.stock)||0}" required></div>
+            <div class="field"><label>Origin / Set</label><input type="text" id="e-origin" value="${escapeHtml(item.origin||'')}"></div>
+            <div class="field full"><label>Description</label><textarea id="e-desc">${escapeHtml(item.description||'')}</textarea></div>
+            <div class="field full">
+              <label>Item Image</label>
+              <div class="img-input-row">
+                <input type="text" id="e-image-url" placeholder="Paste image URL, or upload a file &rarr;" value="${item.imageUrl && !item.imageUrl.startsWith('data:') ? escapeHtml(item.imageUrl) : ''}">
+                <label class="btn upload-btn" for="e-image-file">Upload File</label>
+                <input type="file" id="e-image-file" accept="image/*" class="hidden">
+              </div>
+              <div class="img-preview" id="edit-img-preview">${editImageData ? '<img src="'+editImageData+'" alt="">' : '<span>No image selected</span>'}</div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="edit-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="edit-submit-btn">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
 
-  const btn = document.getElementById("checkoutBtn");
-  btn.textContent = "Processing…"; btn.disabled = true;
-  try{
-    for(const item of items){
-      await dbPush(`orders/${currentUser.key}`, {
-        listingId: item.id, itemName: item.itemName, heroName: item.heroName,
-        itemType: item.itemType, price: item.price, purchasedAt: Date.now()
-      });
-      await dbDelete(`cart/${currentUser.key}/${item.id}`);
-      cartSet.delete(item.id);
+  document.getElementById('edit-close').addEventListener('click', closeModal);
+  document.getElementById('edit-cancel').addEventListener('click', closeModal);
+  document.getElementById('edit-overlay').addEventListener('click', (e) => { if(e.target.id === 'edit-overlay') closeModal(); });
+
+  document.getElementById('e-image-url').addEventListener('input', (e) => {
+    editImageData = e.target.value.trim();
+    updatePreview('edit-img-preview', editImageData);
+  });
+  document.getElementById('e-image-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 1.5*1024*1024){
+      toast('Image too large — please use a file under 1.5MB or paste a URL instead.', 'err');
+      e.target.value = '';
+      return;
     }
-    currentUser.coins -= total;
-    await dbUpdate(`users/${currentUser.key}`, { coins: currentUser.coins });
-    renderUserChrome();
-    await loadOrders();
-    toast(`Purchase complete! ${items.length} item(s) acquired.`);
-    switchView("orders");
-  }catch(e){
-    console.error(e); toast("Checkout failed. Please try again.","err");
-  }finally{
-    btn.textContent = "Checkout"; btn.disabled = false;
-  }
+    editImageData = await fileToDataURL(file);
+    document.getElementById('e-image-url').value = '';
+    updatePreview('edit-img-preview', editImageData);
+  });
+
+  document.getElementById('edit-item-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('edit-submit-btn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    const updates = {
+      name: document.getElementById('e-name').value.trim(),
+      hero: document.getElementById('e-hero').value.trim(),
+      type: document.getElementById('e-type').value,
+      price: parseFloat(document.getElementById('e-price').value) || 0,
+      stock: Math.max(0, parseInt(document.getElementById('e-stock').value, 10) || 0),
+      origin: document.getElementById('e-origin').value.trim(),
+      description: document.getElementById('e-desc').value.trim(),
+      imageUrl: editImageData || '',
+      updatedAt: Date.now()
+    };
+    try{
+      await itemsRef.child(editingItemId).update(updates);
+      toast('"'+updates.name+'" updated.', 'ok');
+      closeModal();
+    }catch(err){
+      toast('Failed to save: ' + err.message, 'err');
+      btn.disabled = false; btn.textContent = 'Save Changes';
+    }
+  });
 }
 
-/* =========================================================================================
-   ORDERS — Read on /orders/{userKey}
-   ========================================================================================= */
-async function loadOrders(){
-  const data = await dbGet(`orders/${currentUser.key}`);
-  ordersCache = data ? Object.entries(data).map(([id,v])=>({id,...v})) : [];
-  ordersCache.sort((a,b)=>b.purchasedAt-a.purchasedAt);
-}
-function renderOrders(){
-  const body = document.getElementById("ordersBody");
-  if(ordersCache.length===0){
-    body.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:40px;">No purchases yet. Visit the Marketplace to buy your first item.</td></tr>`;
-    return;
-  }
-  body.innerHTML = ordersCache.map(o=>`
-    <tr>
-      <td class="strong">${esc(o.itemName)}</td>
-      <td>${esc(o.heroName)}</td>
-      <td><span class="badge ${o.itemType.toLowerCase()}">${esc(o.itemType)}</span></td>
-      <td>${o.price.toLocaleString()} coins</td>
-      <td>${fmtDate(o.purchasedAt)}</td>
-    </tr>`).join("");
+function closeModal(){
+  modalRoot.innerHTML = '';
+  editingItemId = null;
 }
 
-/* =========================================================================================
-   PROFILE — Read + Update on /users/{userKey}
-   ========================================================================================= */
-function renderProfile(){
-  document.getElementById("statListings").textContent = listingsCache.filter(i=>i.ownerId===currentUser.key).length;
-  document.getElementById("statOrders").textContent = ordersCache.length;
-  document.getElementById("statWishlist").textContent = wishlistSet.size;
-  document.getElementById("statCart").textContent = cartSet.size;
-
-  document.getElementById("profAvatar").textContent = currentUser.username.slice(0,2).toUpperCase();
-  document.getElementById("profName").textContent = currentUser.username;
-  document.getElementById("profEmail").textContent = currentUser.email;
-  document.getElementById("profSince").textContent = "Member since " + fmtDate(currentUser.createdAt);
-  document.getElementById("profCoins").textContent = currentUser.coins.toLocaleString();
-
-  document.getElementById("editUsername").value = currentUser.username;
-  document.getElementById("editEmail").value = currentUser.email;
-}
-async function handleTopUp(){
-  const btn = document.getElementById("topUpBtn");
-  btn.disabled = true;
-  try{
-    currentUser.coins += 500;
-    await dbUpdate(`users/${currentUser.key}`, { coins: currentUser.coins });
-    renderUserChrome(); renderProfile();
-    toast("+500 coins added to your balance!");
-  }catch(e){
-    console.error(e); currentUser.coins -= 500; toast("Top up failed.","err");
-  }finally{ btn.disabled = false; }
-}
-async function handleSaveProfile(){
-  const username = document.getElementById("editUsername").value.trim();
-  const email = document.getElementById("editEmail").value.trim();
-  if(!username || !email){ toast("Please fill in both fields.","err"); return; }
-  const btn = document.getElementById("saveProfileBtn");
-  btn.textContent = "Saving…"; btn.disabled = true;
-  try{
-    await dbUpdate(`users/${currentUser.key}`, { username, email });
-    currentUser.username = username; currentUser.email = email;
-    renderUserChrome(); renderProfile();
-    toast("Profile updated.");
-  }catch(e){
-    console.error(e); toast("Failed to update profile.","err");
-  }finally{
-    btn.textContent = "Save Changes"; btn.disabled = false;
-  }
+/* ============================================================
+   DELETE CONFIRM
+   ============================================================ */
+function confirmDelete(id){
+  const item = allItems[id];
+  if(!item) return;
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="del-overlay">
+      <div class="modal modal-sm">
+        <div class="modal-head" style="justify-content:center;"><h2>Remove This Relic?</h2></div>
+        <p>"${escapeHtml(item.name)}" will be permanently removed from the marketplace. This cannot be undone.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" id="del-cancel">Cancel</button>
+          <button class="btn btn-danger" id="del-confirm">Delete Permanently</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('del-cancel').addEventListener('click', closeModal);
+  document.getElementById('del-overlay').addEventListener('click', (e) => { if(e.target.id === 'del-overlay') closeModal(); });
+  document.getElementById('del-confirm').addEventListener('click', async () => {
+    try{
+      await itemsRef.child(id).remove();
+      toast('"'+item.name+'" deleted.', 'ok');
+      closeModal();
+    }catch(err){
+      toast('Failed to delete: ' + err.message, 'err');
+    }
+  });
 }
 
-/* ---------- go ---------- */
-init();
+/* ============================================================
+   CHANGE PASSWORD
+   ============================================================ */
+document.getElementById('open-change-pw').addEventListener('click', () => {
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="pw-overlay">
+      <div class="modal modal-sm">
+        <div class="modal-head" style="justify-content:center;"><h2>Change Password</h2></div>
+        <form id="pw-form" style="text-align:left;">
+          <div class="field"><label>Current Password</label><input type="password" id="pw-current" required></div>
+          <div class="field"><label>New Password</label><input type="password" id="pw-new" minlength="6" required></div>
+          <div class="field"><label>Confirm New Password</label><input type="password" id="pw-confirm" minlength="6" required></div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="pw-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="pw-submit">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.getElementById('pw-cancel').addEventListener('click', closeModal);
+  document.getElementById('pw-overlay').addEventListener('click', (e) => { if(e.target.id === 'pw-overlay') closeModal(); });
+  document.getElementById('pw-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('pw-submit');
+    const cur = document.getElementById('pw-current').value;
+    const next = document.getElementById('pw-new').value;
+    const confirm2 = document.getElementById('pw-confirm').value;
+    if(next !== confirm2){ toast('New passwords do not match.', 'err'); return; }
+    btn.disabled = true; btn.textContent = 'Updating...';
+    try{
+      const snap = await adminsRef.child(currentAdmin.key).once('value');
+      const data = snap.val();
+      const curHash = await sha256(cur);
+      if(curHash !== data.passwordHash){
+        toast('Current password is incorrect.', 'err');
+        btn.disabled = false; btn.textContent = 'Update Password';
+        return;
+      }
+      const newHash = await sha256(next);
+      await adminsRef.child(currentAdmin.key).update({ passwordHash: newHash });
+      toast('Password updated.', 'ok');
+      closeModal();
+    }catch(err){
+      toast('Failed to update password: ' + err.message, 'err');
+      btn.disabled = false; btn.textContent = 'Update Password';
+    }
+  });
+});
+
+/* ============================================================
+   ESC to close modal
+   ============================================================ */
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && modalRoot.innerHTML.trim() !== '') closeModal();
+});
+
+})();
 </script>
 </body>
 </html>
