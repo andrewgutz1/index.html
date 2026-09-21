@@ -6,6 +6,7 @@
 <title>DOTA2 Market — Admin Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <style>
 /* ============ TOKENS ============ */
 :root{
@@ -105,6 +106,7 @@ input,select{font-family:inherit;}
   transition:border-color .15s, box-shadow .15s;
 }
 .field input:focus{outline:none;border-color:var(--blood-bright);box-shadow:0 0 0 3px rgba(226,36,42,0.15);}
+.field-hint{font-size:11px;color:var(--ash-dim);margin-top:-10px;margin-bottom:14px;line-height:1.4;}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   padding:12px 20px;font-weight:700;font-size:14px;letter-spacing:1.5px;
@@ -126,6 +128,16 @@ input,select{font-family:inherit;}
 .attempts-row{display:flex;gap:6px;justify-content:center;margin-top:14px;}
 .attempt-dot{width:9px;height:9px;background:var(--blood);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);opacity:.9;}
 .attempt-dot.used{background:#3a322c;opacity:.5;}
+.code-input{
+  width:100%;padding:14px 13px;background:#0d0b0a;border:1px solid var(--line);
+  color:#f2ede6;font-size:26px;font-weight:700;letter-spacing:10px;text-align:center;
+  border-radius:var(--radius);
+}
+.code-input:focus{outline:none;border-color:var(--gold-soft);box-shadow:0 0 0 3px rgba(201,151,44,0.15);}
+.verify-icon{font-size:30px;color:var(--gold);}
+.resend-row{text-align:center;margin-top:12px;font-size:12.5px;color:var(--ash-dim);}
+.resend-row button{color:var(--gold);font-weight:700;}
+.resend-row button:disabled{color:var(--ash-dim);cursor:not-allowed;text-decoration:none;}
 
 /* ============ APP SHELL ============ */
 #app{display:none;min-height:100vh;position:relative;z-index:1;}
@@ -332,6 +344,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
     </div>
 
     <div id="rulesNote" class="rules-note">Firebase database rules must allow read/write for this demo to save data. If actions fail, set your Realtime Database rules to allow access.</div>
+    <div id="emailjsNote" class="rules-note">Email verification is not fully wired up yet — set EMAILJS_PUBLIC_KEY, EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID near the top of the script (see the comment above them for setup steps). Until then, the verification code will be shown in the browser console instead of emailed, so you can still test the flow.</div>
 
     <!-- LOGIN FORM -->
     <form id="loginForm">
@@ -349,6 +362,8 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
         <div class="attempt-dot" data-i="1"></div>
         <div class="attempt-dot" data-i="2"></div>
         <div class="attempt-dot" data-i="3"></div>
+        <div class="attempt-dot" data-i="4"></div>
+        <div class="attempt-dot" data-i="5"></div>
       </div>
       <div class="auth-switch">No admin account? <button type="button" id="showRegister">Register the first admin</button></div>
     </form>
@@ -360,16 +375,40 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
         <input type="text" id="regUser" required>
       </div>
       <div class="field">
-        <label>Choose Password (min 6 chars)</label>
-        <input type="password" id="regPass" minlength="6" required>
+        <label>Gmail Address</label>
+        <input type="email" id="regEmail" placeholder="you@gmail.com" required>
+      </div>
+      <div class="field-hint">A 6-digit code will be sent here every time you log in.</div>
+      <div class="field">
+        <label>Choose Password (min 8 characters)</label>
+        <input type="password" id="regPass" minlength="8" required>
       </div>
       <div class="field">
         <label>Confirm Password</label>
-        <input type="password" id="regPass2" minlength="6" required>
+        <input type="password" id="regPass2" minlength="8" required>
       </div>
       <button type="submit" class="btn btn-primary">CREATE ADMIN ACCOUNT</button>
       <div class="auth-msg" id="regMsg"></div>
       <div class="auth-switch">Already registered? <button type="button" id="showLogin">Back to login</button></div>
+    </form>
+
+    <!-- VERIFICATION CODE FORM -->
+    <form id="verifyForm" style="display:none;">
+      <div style="text-align:center;margin-bottom:18px;">
+        <div class="verify-icon">✉</div>
+        <div style="font-size:13.5px;color:var(--ash-dim);margin-top:8px;">
+          Enter the 6-digit code sent to<br><b id="verifyEmailLabel" style="color:#f2ede6;"></b>
+        </div>
+      </div>
+      <div class="field">
+        <input type="text" id="verifyCodeInput" class="code-input" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="verifyBtn">VERIFY &amp; ENTER</button>
+      <div class="auth-msg" id="verifyMsg"></div>
+      <div class="resend-row">
+        Didn't get it? <button type="button" id="resendCodeBtn">Resend code</button>
+      </div>
+      <div class="auth-switch"><button type="button" id="cancelVerify">Cancel and go back</button></div>
     </form>
   </div>
 </div>
@@ -513,11 +552,15 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
             <input type="text" id="settingsUser" disabled>
           </div>
           <div class="field-inline">
-            <label>New Password</label>
-            <input type="password" id="settingsNewPass" placeholder="Leave blank to keep current" minlength="6">
+            <label>Gmail for verification codes</label>
+            <input type="email" id="settingsEmail" placeholder="you@gmail.com">
+          </div>
+          <div class="field-inline">
+            <label>New Password (min 8 characters)</label>
+            <input type="password" id="settingsNewPass" placeholder="Leave blank to keep current" minlength="8">
           </div>
           <div class="btn-row">
-            <button type="button" class="btn-sm primary" id="savePassBtn">Update Password</button>
+            <button type="button" class="btn-sm primary" id="savePassBtn">Save Changes</button>
           </div>
           <div class="auth-msg" id="settingsMsg" style="text-align:left;"></div>
         </div>
@@ -558,8 +601,34 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
    CONFIG
 ========================================================= */
 const DB_URL = "https://dota-7c648-default-rtdb.firebaseio.com";
-const MAX_ATTEMPTS = 3;
-const LOCK_MS = 60000; // 60s lock after 3 failed attempts
+const MAX_ATTEMPTS = 5;              // failed login attempts before lockout
+const LOCK_MS = 5 * 60 * 1000;       // 5 minute lock after MAX_ATTEMPTS failed attempts
+const MIN_PASS_LEN = 8;              // minimum password length, enforced on register + change password
+const CODE_EXPIRY_MS = 5 * 60 * 1000; // a sent verification code is valid for 5 minutes
+
+/* ---- EmailJS setup (sends the login verification code to the admin's Gmail) ----
+   A static page like this can't send mail through Gmail's SMTP directly without
+   exposing a password, so this uses EmailJS, which lets a webpage trigger a send
+   through a Gmail account you connect on their side (no password stored here).
+
+   1. Create a free account at https://www.emailjs.com
+   2. Add an Email Service → choose Gmail → sign in with the Gmail account you
+      want codes sent from (this uses OAuth, not your Gmail password).
+   3. Create an Email Template with a body that includes the variable {{code}}
+      (and optionally {{to_email}} in the "To" field of the template).
+   4. Copy your Public Key, Service ID and Template ID into the three constants
+      below. That's it — no other code changes needed.
+*/
+const EMAILJS_PUBLIC_KEY  = "YOUR_EMAILJS_PUBLIC_KEY";
+const EMAILJS_SERVICE_ID  = "YOUR_EMAILJS_SERVICE_ID";
+const EMAILJS_TEMPLATE_ID = "YOUR_EMAILJS_TEMPLATE_ID";
+const EMAILJS_CONFIGURED = EMAILJS_PUBLIC_KEY !== "YOUR_EMAILJS_PUBLIC_KEY"
+  && EMAILJS_SERVICE_ID !== "YOUR_EMAILJS_SERVICE_ID"
+  && EMAILJS_TEMPLATE_ID !== "YOUR_EMAILJS_TEMPLATE_ID";
+
+if(window.emailjs && EMAILJS_CONFIGURED){
+  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+}
 
 /* =========================================================
    AMBIENT EMBERS
@@ -671,6 +740,7 @@ const SEED_SALES = [
    STATE
 ========================================================= */
 let CURRENT_ADMIN = null;
+let PENDING_ADMIN = null;   // holds the admin record between password-check and code-verify
 let SKINS = {};
 let SALES = {};
 
@@ -681,18 +751,29 @@ const authScreen = document.getElementById('authScreen');
 const appEl = document.getElementById('app');
 const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
+const verifyForm = document.getElementById('verifyForm');
 const loginMsg = document.getElementById('loginMsg');
 const regMsg = document.getElementById('regMsg');
+const verifyMsg = document.getElementById('verifyMsg');
 const authTitle = document.getElementById('authTitle');
 const rulesNote = document.getElementById('rulesNote');
+const emailjsNote = document.getElementById('emailjsNote');
+
+if(!EMAILJS_CONFIGURED) emailjsNote.classList.add('show');
 
 document.getElementById('showRegister').onclick = ()=>{
-  loginForm.style.display='none'; registerForm.style.display='block';
+  loginForm.style.display='none'; registerForm.style.display='block'; verifyForm.style.display='none';
   authTitle.textContent = 'REGISTER ADMIN';
 };
 document.getElementById('showLogin').onclick = ()=>{
-  registerForm.style.display='none'; loginForm.style.display='block';
+  registerForm.style.display='none'; loginForm.style.display='block'; verifyForm.style.display='none';
   authTitle.textContent = 'ADMIN ACCESS';
+};
+document.getElementById('cancelVerify').onclick = ()=>{
+  PENDING_ADMIN = null;
+  verifyForm.style.display='none'; loginForm.style.display='block';
+  authTitle.textContent = 'ADMIN ACCESS';
+  verifyMsg.textContent=''; document.getElementById('verifyCodeInput').value='';
 };
 
 function getAttempts(){
@@ -705,12 +786,12 @@ function renderAttemptDots(){
   document.querySelectorAll('.attempt-dot').forEach((dot,i)=>{
     dot.classList.toggle('used', i < state.count);
   });
-  const remaining = MAX_ATTEMPTS - state.count;
   const now = Date.now();
   if(state.lockUntil && state.lockUntil > now){
-    const secs = Math.ceil((state.lockUntil - now)/1000);
+    const mins = Math.floor((state.lockUntil - now)/60000);
+    const secs = Math.ceil(((state.lockUntil - now)%60000)/1000);
     loginMsg.className = 'auth-msg err';
-    loginMsg.textContent = `Too many failed attempts. Locked for ${secs}s.`;
+    loginMsg.textContent = `Too many failed attempts. Locked for ${mins}:${String(secs).padStart(2,'0')}.`;
     document.getElementById('loginBtn').disabled = true;
   } else if(state.lockUntil && state.lockUntil <= now){
     setAttempts({count:0, lockUntil:0});
@@ -740,14 +821,21 @@ checkAdminExists();
 registerForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const user = document.getElementById('regUser').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
   regMsg.className='auth-msg';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    regMsg.className='auth-msg err'; regMsg.textContent='Enter a valid email address.'; return;
+  }
+  if(pass.length < MIN_PASS_LEN){
+    regMsg.className='auth-msg err'; regMsg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
+  }
   if(pass !== pass2){
     regMsg.className='auth-msg err'; regMsg.textContent='Passwords do not match.'; return;
   }
   try{
-    await dbSet('admin', { username:user, password: encode(pass) });
+    await dbSet('admin', { username:user, password: encode(pass), email });
     regMsg.className='auth-msg ok'; regMsg.textContent='Admin created! You can log in now.';
     setTimeout(()=>{
       registerForm.style.display='none'; loginForm.style.display='block';
@@ -759,6 +847,33 @@ registerForm.addEventListener('submit', async (e)=>{
     rulesNote.classList.add('show');
   }
 });
+
+function generateCode(){
+  return String(Math.floor(100000 + Math.random()*900000));
+}
+
+async function sendVerificationCode(admin){
+  const code = generateCode();
+  const expiresAt = Date.now() + CODE_EXPIRY_MS;
+  await dbPatch('admin', { verifyCode: { code, expiresAt } });
+
+  if(EMAILJS_CONFIGURED && window.emailjs){
+    try{
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        code,
+        to_email: admin.email
+      });
+      toast(`Verification code sent to ${admin.email}.`);
+    }catch(err){
+      toast('Could not send the verification email — check your EmailJS setup.', true);
+      console.warn('EmailJS send failed:', err);
+    }
+  } else {
+    // Dev fallback so the flow is testable before EmailJS is configured.
+    console.log(`%c[DEV MODE] Verification code for ${admin.email}: ${code}`, 'color:#c9972c;font-weight:bold;font-size:14px;');
+    toast('EmailJS not configured — code logged to browser console (dev mode).', true);
+  }
+}
 
 loginForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -779,9 +894,21 @@ loginForm.addEventListener('submit', async (e)=>{
     const ok = (admin.username === user) && (decode(admin.password) === pass);
     if(ok){
       setAttempts({count:0, lockUntil:0});
-      CURRENT_ADMIN = admin.username;
-      loginMsg.className='auth-msg ok'; loginMsg.textContent='Access granted.';
-      setTimeout(enterApp, 350);
+      loginMsg.className='auth-msg ok'; loginMsg.textContent='Password verified. Sending code...';
+      PENDING_ADMIN = admin;
+      try{
+        await sendVerificationCode(admin);
+      }catch(err){
+        loginMsg.className='auth-msg err'; loginMsg.textContent='Could not generate a verification code.';
+        return;
+      }
+      document.getElementById('verifyEmailLabel').textContent = admin.email || '(no email on file)';
+      loginForm.style.display='none';
+      verifyForm.style.display='block';
+      authTitle.textContent = 'VERIFY YOUR IDENTITY';
+      loginMsg.textContent='';
+      document.getElementById('verifyCodeInput').value='';
+      document.getElementById('verifyCodeInput').focus();
     } else {
       const newCount = state.count + 1;
       if(newCount >= MAX_ATTEMPTS){
@@ -792,7 +919,7 @@ loginForm.addEventListener('submit', async (e)=>{
       renderAttemptDots();
       loginMsg.className='auth-msg err';
       const left = MAX_ATTEMPTS - newCount;
-      loginMsg.textContent = left > 0 ? `Incorrect credentials. ${left} attempt(s) left.` : 'Incorrect credentials. Account locked.';
+      loginMsg.textContent = left > 0 ? `Incorrect credentials. ${left} attempt(s) left.` : 'Incorrect credentials. Account locked for 5 minutes.';
     }
   }catch(err){
     loginMsg.className='auth-msg err'; loginMsg.textContent='Connection to database failed.';
@@ -800,11 +927,57 @@ loginForm.addEventListener('submit', async (e)=>{
   }
 });
 
+verifyForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!PENDING_ADMIN){ return; }
+  const entered = document.getElementById('verifyCodeInput').value.trim();
+  verifyMsg.className='auth-msg';
+  try{
+    const admin = await dbGet('admin');
+    const vc = admin && admin.verifyCode;
+    if(!vc){
+      verifyMsg.className='auth-msg err'; verifyMsg.textContent='No pending code — please resend.'; return;
+    }
+    if(Date.now() > vc.expiresAt){
+      verifyMsg.className='auth-msg err'; verifyMsg.textContent='Code expired — please resend.'; return;
+    }
+    if(entered !== vc.code){
+      verifyMsg.className='auth-msg err'; verifyMsg.textContent='Incorrect code. Try again.'; return;
+    }
+    // success
+    await dbPatch('admin', { verifyCode: null });
+    CURRENT_ADMIN = admin.username;
+    PENDING_ADMIN = null;
+    verifyMsg.className='auth-msg ok'; verifyMsg.textContent='Verified. Entering...';
+    setTimeout(enterApp, 350);
+  }catch(err){
+    verifyMsg.className='auth-msg err'; verifyMsg.textContent='Verification failed — connection error.';
+  }
+});
+
+document.getElementById('resendCodeBtn').onclick = async ()=>{
+  if(!PENDING_ADMIN) return;
+  const btn = document.getElementById('resendCodeBtn');
+  btn.disabled = true;
+  verifyMsg.className='auth-msg'; verifyMsg.textContent='Resending code...';
+  try{
+    await sendVerificationCode(PENDING_ADMIN);
+    verifyMsg.className='auth-msg ok'; verifyMsg.textContent='A new code has been sent.';
+  }catch(err){
+    verifyMsg.className='auth-msg err'; verifyMsg.textContent='Could not resend code.';
+  }
+  setTimeout(()=>{ btn.disabled=false; }, 15000);
+};
+
 document.getElementById('logoutBtn').onclick = ()=>{
   CURRENT_ADMIN = null;
   appEl.classList.remove('active');
   authScreen.style.display='flex';
   loginForm.reset();
+  loginForm.style.display='block';
+  verifyForm.style.display='none';
+  registerForm.style.display='none';
+  authTitle.textContent='ADMIN ACCESS';
 };
 
 /* =========================================================
@@ -816,6 +989,10 @@ async function enterApp(){
   document.getElementById('adminNameChip').textContent = CURRENT_ADMIN;
   document.getElementById('adminNameTop').textContent = CURRENT_ADMIN;
   document.getElementById('settingsUser').value = CURRENT_ADMIN;
+  try{
+    const admin = await dbGet('admin');
+    document.getElementById('settingsEmail').value = (admin && admin.email) || '';
+  }catch(e){ /* ignore */ }
 
   await ensureSeedData();
   await loadAll();
@@ -1018,7 +1195,8 @@ function resetSkinForm(){
   document.getElementById('skinSubmitBtn').textContent = 'Save Skin';
   skinCancelBtn.style.display='none';
   document.getElementById('imgPreviewHint').style.display='none';
-}skinCancelBtn.onclick = resetSkinForm;
+}
+skinCancelBtn.onclick = resetSkinForm;
 
 /* live image preview as the URL is typed/pasted */
 const skinImageInput = document.getElementById('skinImage');
@@ -1153,15 +1331,28 @@ document.getElementById('modalConfirm').onclick = ()=>{
 };
 
 /* =========================================================
-   SETTINGS: change password
+   SETTINGS: change password / email
 ========================================================= */
 document.getElementById('savePassBtn').onclick = async ()=>{
   const np = document.getElementById('settingsNewPass').value;
+  const newEmail = document.getElementById('settingsEmail').value.trim();
   const msg = document.getElementById('settingsMsg');
-  if(!np || np.length<6){ msg.className='auth-msg err'; msg.textContent='Password must be at least 6 characters.'; return; }
+
+  if(newEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)){
+    msg.className='auth-msg err'; msg.textContent='Enter a valid email address.'; return;
+  }
+  if(np && np.length < MIN_PASS_LEN){
+    msg.className='auth-msg err'; msg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
+  }
+  const updates = {};
+  if(newEmail) updates.email = newEmail;
+  if(np) updates.password = encode(np);
+  if(!Object.keys(updates).length){
+    msg.className='auth-msg err'; msg.textContent='Nothing to update.'; return;
+  }
   try{
-    await dbPatch('admin', { password: encode(np) });
-    msg.className='auth-msg ok'; msg.textContent='Password updated successfully.';
+    await dbPatch('admin', updates);
+    msg.className='auth-msg ok'; msg.textContent='Account updated successfully.';
     document.getElementById('settingsNewPass').value='';
   }catch(err){
     msg.className='auth-msg err'; msg.textContent='Update failed — check Firebase rules.';
