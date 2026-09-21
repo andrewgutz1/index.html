@@ -6,7 +6,7 @@
 <title>DOTA2 Market — Admin Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ============ TOKENS ============ */
 :root{
@@ -344,7 +344,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
     </div>
 
     <div id="rulesNote" class="rules-note">Firebase database rules must allow read/write for this demo to save data. If actions fail, set your Realtime Database rules to allow access.</div>
-    <div id="emailjsNote" class="rules-note">Email verification is not fully wired up yet — set EMAILJS_PUBLIC_KEY, EMAILJS_SERVICE_ID and EMAILJS_TEMPLATE_ID near the top of the script (see the comment above them for setup steps). Until then, the verification code will be shown in the browser console instead of emailed, so you can still test the flow.</div>
+    <div id="authSetupNote" class="rules-note">Email verification is not fully wired up yet — set GOOGLE_CLIENT_ID near the top of the script (see the comment above it for Google Cloud Console setup steps), and make sure this file is hosted over http/https rather than opened as a local file, since Google Sign-In requires that. Until it's configured, the verification code will be shown in the browser console instead of emailed, so you can still test the flow.</div>
 
     <!-- LOGIN FORM -->
     <form id="loginForm">
@@ -606,28 +606,81 @@ const LOCK_MS = 5 * 60 * 1000;       // 5 minute lock after MAX_ATTEMPTS failed 
 const MIN_PASS_LEN = 8;              // minimum password length, enforced on register + change password
 const CODE_EXPIRY_MS = 5 * 60 * 1000; // a sent verification code is valid for 5 minutes
 
-/* ---- EmailJS setup (sends the login verification code to the admin's Gmail) ----
-   A static page like this can't send mail through Gmail's SMTP directly without
-   exposing a password, so this uses EmailJS, which lets a webpage trigger a send
-   through a Gmail account you connect on their side (no password stored here).
+/* ---- Google Sign-In + Gmail API setup (sends the login code from your own Gmail) ----
+   This calls Gmail's own API directly from the browser — no third-party relay,
+   just your Google account granting this page permission to send mail as you.
 
-   1. Create a free account at https://www.emailjs.com
-   2. Add an Email Service → choose Gmail → sign in with the Gmail account you
-      want codes sent from (this uses OAuth, not your Gmail password).
-   3. Create an Email Template with a body that includes the variable {{code}}
-      (and optionally {{to_email}} in the "To" field of the template).
-   4. Copy your Public Key, Service ID and Template ID into the three constants
-      below. That's it — no other code changes needed.
+   1. Go to https://console.cloud.google.com and create a project (or reuse one).
+   2. APIs & Services → Library → search "Gmail API" → Enable.
+   3. APIs & Services → OAuth consent screen → set it up as "External", add the
+      scope https://www.googleapis.com/auth/gmail.send, and add your own Gmail
+      address as a Test User (this avoids needing Google's app-verification
+      review, since it's just for your own admin use).
+   4. APIs & Services → Credentials → Create Credentials → OAuth client ID →
+      Application type: Web application. Under "Authorized JavaScript origins"
+      add the exact URL this file will be hosted at (e.g. an https://your-name.
+      github.io origin, or http://localhost:5500 if testing locally with a
+      dev server — NOT a file:// path, Google Sign-In requires http/https).
+   5. Copy the Client ID into the constant below.
+   6. Host this file over http/https (GitHub Pages, Firebase Hosting, or a
+      local dev server all work) — opening it directly as a local file will
+      NOT let Google Sign-In work.
+   7. On first login you'll see a Google consent popup, and likely a "Google
+      hasn't verified this app" warning — that's expected for an app you
+      haven't submitted for review. Click "Advanced" → "Go to (app name)
+      (unsafe)" to proceed; this is safe here since you are the developer
+      and the only test user.
 */
-const EMAILJS_PUBLIC_KEY  = "YOUR_EMAILJS_PUBLIC_KEY";
-const EMAILJS_SERVICE_ID  = "YOUR_EMAILJS_SERVICE_ID";
-const EMAILJS_TEMPLATE_ID = "YOUR_EMAILJS_TEMPLATE_ID";
-const EMAILJS_CONFIGURED = EMAILJS_PUBLIC_KEY !== "YOUR_EMAILJS_PUBLIC_KEY"
-  && EMAILJS_SERVICE_ID !== "YOUR_EMAILJS_SERVICE_ID"
-  && EMAILJS_TEMPLATE_ID !== "YOUR_EMAILJS_TEMPLATE_ID";
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+const GOOGLE_CONFIGURED = GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
 
-if(window.emailjs && EMAILJS_CONFIGURED){
-  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+let gTokenClient = null;
+let gmailAccessToken = null;
+
+function initGoogleClient(){
+  if(!GOOGLE_CONFIGURED || !window.google || !google.accounts || !google.accounts.oauth2) return;
+  gTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GMAIL_SEND_SCOPE,
+    callback: '' // assigned per-request in requestGmailToken()
+  });
+}
+window.addEventListener('load', initGoogleClient);
+
+function requestGmailToken(){
+  return new Promise((resolve, reject)=>{
+    if(!gTokenClient){ reject(new Error('Google Sign-In is not ready — check GOOGLE_CLIENT_ID and that this page is hosted over http/https.')); return; }
+    gTokenClient.callback = (resp)=>{
+      if(resp.error){ reject(resp); return; }
+      gmailAccessToken = resp.access_token;
+      resolve(resp.access_token);
+    };
+    // Silent refresh once we've already consented once this session; otherwise show the consent popup.
+    gTokenClient.requestAccessToken({ prompt: gmailAccessToken ? '' : 'consent' });
+  });
+}
+
+function base64UrlEncode(str){
+  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+async function sendGmailCode(toEmail, code){
+  const token = await requestGmailToken();
+  const subject = 'Your DOTA2 Market login code';
+  const body = `Your verification code is: ${code}\r\n\r\nIt expires in 5 minutes. If you didn't request this, you can ignore this email.`;
+  const mime = `To: ${toEmail}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${body}`;
+  const raw = base64UrlEncode(mime);
+  const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw })
+  });
+  if(!res.ok){
+    const errBody = await res.text().catch(()=>'');
+    throw new Error('Gmail send failed (' + res.status + '): ' + errBody);
+  }
+  return res.json();
 }
 
 /* =========================================================
@@ -757,9 +810,9 @@ const regMsg = document.getElementById('regMsg');
 const verifyMsg = document.getElementById('verifyMsg');
 const authTitle = document.getElementById('authTitle');
 const rulesNote = document.getElementById('rulesNote');
-const emailjsNote = document.getElementById('emailjsNote');
+const authSetupNote = document.getElementById('authSetupNote');
 
-if(!EMAILJS_CONFIGURED) emailjsNote.classList.add('show');
+if(!GOOGLE_CONFIGURED) authSetupNote.classList.add('show');
 
 document.getElementById('showRegister').onclick = ()=>{
   loginForm.style.display='none'; registerForm.style.display='block'; verifyForm.style.display='none';
@@ -857,21 +910,18 @@ async function sendVerificationCode(admin){
   const expiresAt = Date.now() + CODE_EXPIRY_MS;
   await dbPatch('admin', { verifyCode: { code, expiresAt } });
 
-  if(EMAILJS_CONFIGURED && window.emailjs){
+  if(GOOGLE_CONFIGURED){
     try{
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-        code,
-        to_email: admin.email
-      });
+      await sendGmailCode(admin.email, code);
       toast(`Verification code sent to ${admin.email}.`);
     }catch(err){
-      toast('Could not send the verification email — check your EmailJS setup.', true);
-      console.warn('EmailJS send failed:', err);
+      toast('Could not send the verification email — check your Google Sign-In setup.', true);
+      console.warn('Gmail send failed:', err);
     }
   } else {
-    // Dev fallback so the flow is testable before EmailJS is configured.
+    // Dev fallback so the flow is testable before Google Sign-In is configured.
     console.log(`%c[DEV MODE] Verification code for ${admin.email}: ${code}`, 'color:#c9972c;font-weight:bold;font-size:14px;');
-    toast('EmailJS not configured — code logged to browser console (dev mode).', true);
+    toast('Google Sign-In not configured — code logged to browser console (dev mode).', true);
   }
 }
 
