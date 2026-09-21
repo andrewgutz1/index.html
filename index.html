@@ -374,11 +374,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
         <label>Choose Username</label>
         <input type="text" id="regUser" required>
       </div>
-      <div class="field">
-        <label>Gmail Address</label>
-        <input type="email" id="regEmail" placeholder="you@gmail.com" required>
-      </div>
-      <div class="field-hint">A 6-digit code will be sent here every time you log in.</div>
+      <div class="field-hint">Login codes will always be sent to drewwwtangz@gmail.com.</div>
       <div class="field">
         <label>Choose Password (min 8 characters)</label>
         <input type="password" id="regPass" minlength="8" required>
@@ -552,8 +548,8 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
             <input type="text" id="settingsUser" disabled>
           </div>
           <div class="field-inline">
-            <label>Gmail for verification codes</label>
-            <input type="email" id="settingsEmail" placeholder="you@gmail.com">
+            <label>Verification codes sent to</label>
+            <input type="text" value="drewwwtangz@gmail.com" disabled>
           </div>
           <div class="field-inline">
             <label>New Password (min 8 characters)</label>
@@ -605,6 +601,7 @@ const MAX_ATTEMPTS = 5;              // failed login attempts before lockout
 const LOCK_MS = 5 * 60 * 1000;       // 5 minute lock after MAX_ATTEMPTS failed attempts
 const MIN_PASS_LEN = 8;              // minimum password length, enforced on register + change password
 const CODE_EXPIRY_MS = 5 * 60 * 1000; // a sent verification code is valid for 5 minutes
+const VERIFICATION_EMAIL = "drewwwtangz@gmail.com"; // the only address login codes are ever sent to
 
 /* ---- Google Sign-In + Gmail API setup (sends the login code from your own Gmail) ----
    This calls Gmail's own API directly from the browser — no third-party relay,
@@ -874,13 +871,9 @@ checkAdminExists();
 registerForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const user = document.getElementById('regUser').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
   regMsg.className='auth-msg';
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    regMsg.className='auth-msg err'; regMsg.textContent='Enter a valid email address.'; return;
-  }
   if(pass.length < MIN_PASS_LEN){
     regMsg.className='auth-msg err'; regMsg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
   }
@@ -888,7 +881,7 @@ registerForm.addEventListener('submit', async (e)=>{
     regMsg.className='auth-msg err'; regMsg.textContent='Passwords do not match.'; return;
   }
   try{
-    await dbSet('admin', { username:user, password: encode(pass), email });
+    await dbSet('admin', { username:user, password: encode(pass) });
     regMsg.className='auth-msg ok'; regMsg.textContent='Admin created! You can log in now.';
     setTimeout(()=>{
       registerForm.style.display='none'; loginForm.style.display='block';
@@ -912,15 +905,15 @@ async function sendVerificationCode(admin){
 
   if(GOOGLE_CONFIGURED){
     try{
-      await sendGmailCode(admin.email, code);
-      toast(`Verification code sent to ${admin.email}.`);
+      await sendGmailCode(VERIFICATION_EMAIL, code);
+      toast(`Verification code sent to ${VERIFICATION_EMAIL}.`);
     }catch(err){
       toast('Could not send the verification email — check your Google Sign-In setup.', true);
       console.warn('Gmail send failed:', err);
     }
   } else {
     // Dev fallback so the flow is testable before Google Sign-In is configured.
-    console.log(`%c[DEV MODE] Verification code for ${admin.email}: ${code}`, 'color:#c9972c;font-weight:bold;font-size:14px;');
+    console.log(`%c[DEV MODE] Verification code for ${VERIFICATION_EMAIL}: ${code}`, 'color:#c9972c;font-weight:bold;font-size:14px;');
     toast('Google Sign-In not configured — code logged to browser console (dev mode).', true);
   }
 }
@@ -952,7 +945,7 @@ loginForm.addEventListener('submit', async (e)=>{
         loginMsg.className='auth-msg err'; loginMsg.textContent='Could not generate a verification code.';
         return;
       }
-      document.getElementById('verifyEmailLabel').textContent = admin.email || '(no email on file)';
+      document.getElementById('verifyEmailLabel').textContent = VERIFICATION_EMAIL;
       loginForm.style.display='none';
       verifyForm.style.display='block';
       authTitle.textContent = 'VERIFY YOUR IDENTITY';
@@ -1039,10 +1032,6 @@ async function enterApp(){
   document.getElementById('adminNameChip').textContent = CURRENT_ADMIN;
   document.getElementById('adminNameTop').textContent = CURRENT_ADMIN;
   document.getElementById('settingsUser').value = CURRENT_ADMIN;
-  try{
-    const admin = await dbGet('admin');
-    document.getElementById('settingsEmail').value = (admin && admin.email) || '';
-  }catch(e){ /* ignore */ }
 
   await ensureSeedData();
   await loadAll();
@@ -1385,24 +1374,17 @@ document.getElementById('modalConfirm').onclick = ()=>{
 ========================================================= */
 document.getElementById('savePassBtn').onclick = async ()=>{
   const np = document.getElementById('settingsNewPass').value;
-  const newEmail = document.getElementById('settingsEmail').value.trim();
   const msg = document.getElementById('settingsMsg');
 
-  if(newEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)){
-    msg.className='auth-msg err'; msg.textContent='Enter a valid email address.'; return;
+  if(!np){
+    msg.className='auth-msg err'; msg.textContent='Enter a new password to update.'; return;
   }
-  if(np && np.length < MIN_PASS_LEN){
+  if(np.length < MIN_PASS_LEN){
     msg.className='auth-msg err'; msg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
   }
-  const updates = {};
-  if(newEmail) updates.email = newEmail;
-  if(np) updates.password = encode(np);
-  if(!Object.keys(updates).length){
-    msg.className='auth-msg err'; msg.textContent='Nothing to update.'; return;
-  }
   try{
-    await dbPatch('admin', updates);
-    msg.className='auth-msg ok'; msg.textContent='Account updated successfully.';
+    await dbPatch('admin', { password: encode(np) });
+    msg.className='auth-msg ok'; msg.textContent='Password updated successfully.';
     document.getElementById('settingsNewPass').value='';
   }catch(err){
     msg.className='auth-msg err'; msg.textContent='Update failed — check Firebase rules.';
