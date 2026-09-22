@@ -6,7 +6,6 @@
 <title>DOTA2 Market — Admin Console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ============ TOKENS ============ */
 :root{
@@ -344,7 +343,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
     </div>
 
     <div id="rulesNote" class="rules-note">Firebase database rules must allow read/write for this demo to save data. If actions fail, set your Realtime Database rules to allow access.</div>
-    <div id="authSetupNote" class="rules-note">Email verification is not fully wired up yet — set GOOGLE_CLIENT_ID near the top of the script (see the comment above it for Google Cloud Console setup steps), and make sure this file is hosted over http/https rather than opened as a local file, since Google Sign-In requires that. Until it's configured, the verification code will be shown in the browser console instead of emailed, so you can still test the flow.</div>
+    <div id="authSetupNote" class="rules-note">Email sending is not fully wired up yet — set GOOGLE_CLIENT_ID near the top of the script (see the comment above it for the Google Cloud Console setup steps), and make sure this file is hosted over http/https rather than opened as a local file, since Google Sign-In requires that. Until it's configured, the verification code will be shown in the browser console instead of emailed, so you can still test the flow.</div>
 
     <!-- LOGIN FORM -->
     <form id="loginForm">
@@ -600,6 +599,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
 
 <div id="toast"></div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* =========================================================
    CONFIG
@@ -610,37 +610,42 @@ const LOCK_MS = 5 * 60 * 1000;       // 5 minute lock after MAX_ATTEMPTS failed 
 const MIN_PASS_LEN = 8;              // minimum password length, enforced on register + change password
 const CODE_EXPIRY_MS = 5 * 60 * 1000; // a sent verification code is valid for 5 minutes
 
-/* ---- Google Sign-In + Gmail API setup (sends the login code from your own Gmail) ----
-   This calls Gmail's own API directly from the browser — no third-party relay,
-   just your Google account granting this page permission to send mail as you.
+/* ---- OTP email delivery, sent from drewwwtangz@gmail.com, via Gmail's own API ----
+   This is Google talking to Google — no third-party mail relay involved.
+   The browser gets a short-lived access token from Google Sign-In, then
+   calls the Gmail API directly to send the mail. A raw Gmail password or
+   app password is never put in this file (that would let anyone who views
+   the page's source take over the account), and this approach doesn't
+   depend on any outside email service.
 
+   The trade-off of doing it this way with no backend server: whichever
+   Google account authorizes in the sign-in popup is the account the mail
+   sends FROM. So every admin needs to authorize once per browser session
+   by signing in as drewwwtangz@gmail.com when prompted.
+
+   SETUP (one-time, free, ~5 minutes):
    1. Go to https://console.cloud.google.com and create a project (or reuse one).
    2. APIs & Services → Library → search "Gmail API" → Enable.
-   3. APIs & Services → OAuth consent screen → set it up as "External", add the
-      scope https://www.googleapis.com/auth/gmail.send, and add your own Gmail
-      address as a Test User (this avoids needing Google's app-verification
-      review, since it's just for your own admin use).
+   3. APIs & Services → OAuth consent screen → User type "External" → add the
+      scope https://www.googleapis.com/auth/gmail.send → under "Test users"
+      add drewwwtangz@gmail.com (this skips Google's app-review process,
+      since it's only ever used by you).
    4. APIs & Services → Credentials → Create Credentials → OAuth client ID →
-      Application type: Web application. Under "Authorized JavaScript origins"
-      add the exact URL this file will be hosted at (e.g. an https://your-name.
-      github.io origin, or http://localhost:5500 if testing locally with a
-      dev server — NOT a file:// path, Google Sign-In requires http/https).
-   5. Copy the Client ID into the constant below.
-   6. Host this file over http/https (GitHub Pages, Firebase Hosting, or a
-      local dev server all work) — opening it directly as a local file will
-      NOT let Google Sign-In work.
-   7. On first login you'll see a Google consent popup, and likely a "Google
-      hasn't verified this app" warning — that's expected for an app you
-      haven't submitted for review. Click "Advanced" → "Go to (app name)
-      (unsafe)" to proceed; this is safe here since you are the developer
-      and the only test user.
-
-   NOTE: the account you sign in with via this popup is the account the
-   code is SENT FROM. Every admin should sign in with the same Google
-   account that owns GOOGLE_CLIENT_ID, and codes are then delivered to
-   whatever Gmail address that admin registered with below.
+      Application type "Web application". Under "Authorized JavaScript
+      origins" add the exact URL this file will be hosted at (e.g.
+      https://your-name.github.io, or http://localhost:5500 for local
+      testing with a dev server) — it must be served over http/https, NOT
+      opened as a local file, or Google Sign-In won't work.
+   5. Copy the generated Client ID into GOOGLE_CLIENT_ID below.
+   6. Host this file over http/https. On first login you'll get a Google
+      consent popup — sign in as drewwwtangz@gmail.com — and likely a
+      "Google hasn't verified this app" warning, which is expected for an
+      app you haven't submitted for review. Click "Advanced" → "Go to
+      (app name) (unsafe)" to proceed; this is safe here since you are the
+      developer and drewwwtangz@gmail.com is your own test user.
 */
 const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+const OTP_SENDER_EMAIL = "drewwwtangz@gmail.com"; // the account that must authorize in the popup
 const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 const GOOGLE_CONFIGURED = GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
 
@@ -665,7 +670,7 @@ function requestGmailToken(){
       gmailAccessToken = resp.access_token;
       resolve(resp.access_token);
     };
-    // Silent refresh once we've already consented once this session; otherwise show the consent popup.
+    // Silent refresh once already consented this session; otherwise show the consent popup.
     gTokenClient.requestAccessToken({ prompt: gmailAccessToken ? '' : 'consent' });
   });
 }
@@ -674,11 +679,22 @@ function base64UrlEncode(str){
   return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 
-async function sendGmailCode(toEmail, code){
+function buildOtpEmailHtml(code){
+  return `
+  <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:8px 4px;">
+    <h2 style="font-size:20px;color:#111;margin:0 0 18px;">DOTA2 Market Access Code</h2>
+    <p style="font-size:14px;color:#3c4043;margin:0 0 14px;">Use the following 6-digit verification code to sign in:</p>
+    <div style="font-size:34px;font-weight:700;letter-spacing:6px;color:#1a73e8;margin:0 0 18px;">${code}</div>
+    <p style="font-size:13px;color:#5f6368;margin:0 0 4px;">This code expires in 5 minutes.</p>
+    <p style="font-size:12px;color:#80868b;margin-top:20px;">If you didn't request this, you can ignore this email.</p>
+  </div>`;
+}
+
+async function sendOtpEmail(toEmail, code){
   const token = await requestGmailToken();
-  const subject = 'Your DOTA2 Market login code';
-  const body = `Your verification code is: ${code}\r\n\r\nIt expires in 5 minutes. If you didn't request this, you can ignore this email.`;
-  const mime = `To: ${toEmail}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${body}`;
+  const subject = 'Your DOTA2 Market Access Code';
+  const html = buildOtpEmailHtml(code);
+  const mime = `To: ${toEmail}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${html}`;
   const raw = base64UrlEncode(mime);
   const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',
@@ -839,6 +855,7 @@ document.getElementById('cancelVerify').onclick = ()=>{
   verifyMsg.textContent=''; document.getElementById('verifyCodeInput').value='';
 };
 
+/* ---- 5-attempt / 5-minute lockout ---- */
 function getAttempts(){
   return JSON.parse(localStorage.getItem('d2m_attempts') || '{"count":0,"lockUntil":0}');
 }
@@ -923,8 +940,8 @@ async function sendVerificationCode(admin){
 
   if(GOOGLE_CONFIGURED && targetEmail){
     try{
-      await sendGmailCode(targetEmail, code);
-      toast(`Verification code sent to ${targetEmail}.`);
+      await sendOtpEmail(targetEmail, code);
+      toast(`Verification code sent to ${targetEmail} from ${OTP_SENDER_EMAIL}.`);
     }catch(err){
       toast('Could not send the verification email — check your Google Sign-In setup.', true);
       console.warn('Gmail send failed:', err);
