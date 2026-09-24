@@ -360,8 +360,6 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
         <div class="attempt-dot" data-i="1"></div>
         <div class="attempt-dot" data-i="2"></div>
         <div class="attempt-dot" data-i="3"></div>
-        <div class="attempt-dot" data-i="4"></div>
-        <div class="attempt-dot" data-i="5"></div>
       </div>
       <div class="auth-switch">No admin account? <button type="button" id="showRegister">Register the first admin</button></div>
     </form>
@@ -373,6 +371,11 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
         <input type="text" id="regUser" required>
       </div>
       <div class="field">
+        <label>Gmail Account</label>
+        <input type="email" id="regEmail" placeholder="you@gmail.com" required>
+      </div>
+      <div class="field-hint">Login codes will be emailed to this address every time you sign in.</div>
+      <div class="field">
         <label>Choose Password (min 8 characters)</label>
         <input type="password" id="regPass" minlength="8" required>
       </div>
@@ -383,6 +386,24 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
       <button type="submit" class="btn btn-primary">CREATE ADMIN ACCOUNT</button>
       <div class="auth-msg" id="regMsg"></div>
       <div class="auth-switch">Already registered? <button type="button" id="showLogin">Back to login</button></div>
+    </form>
+
+    <!-- OTP VERIFY FORM -->
+    <form id="verifyForm" style="display:none;">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div class="verify-icon">✉</div>
+        <div class="field-hint" id="verifySentTo" style="margin-top:8px;">A 6-digit code was emailed to you.</div>
+      </div>
+      <div class="field">
+        <label>Enter Code</label>
+        <input type="text" id="verifyCode" class="code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="verifyBtn">VERIFY &amp; ENTER</button>
+      <div class="auth-msg" id="verifyMsg"></div>
+      <div class="resend-row">
+        Didn't get it? <button type="button" id="resendOtpBtn">Resend code</button>
+      </div>
+      <div class="auth-switch"><button type="button" id="cancelVerify">← Back to login</button></div>
     </form>
   </div>
 </div>
@@ -526,6 +547,10 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
             <input type="text" id="settingsUser" disabled>
           </div>
           <div class="field-inline">
+            <label>Gmail Account (receives login codes)</label>
+            <input type="email" id="settingsEmail" placeholder="you@gmail.com">
+          </div>
+          <div class="field-inline">
             <label>New Password (min 8 characters)</label>
             <input type="password" id="settingsNewPass" placeholder="Leave blank to keep current" minlength="8">
           </div>
@@ -579,7 +604,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
    SETUP (one-time, free, ~5 minutes):
    1. Create a new Google Sheet (any name, any tab name — a single sheet is
       all it uses; Admin / Skins / Sales all live side-by-side in it as
-      three column blocks: A–B, D–L, N–T. The script writes its own header
+      three column blocks: A–C, D–L, N–T. The script writes its own header
       row the first time it runs, so you don't need to type anything into
       the sheet yourself.
    2. Extensions → Apps Script. Delete any starter code and paste in the
@@ -603,7 +628,9 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyKDsEsm0Vc7fp_8YZMBmrGGsctXhoh6iqkYF5TsG_0j-fk0H3R9qyL8sAJbjE29kcqUQ/exec";
 const APPS_SCRIPT_CONFIGURED = APPS_SCRIPT_URL.indexOf('PASTE_YOUR') !== 0;
 
-const MAX_ATTEMPTS = 5;              // failed login attempts before lockout
+const MAX_ATTEMPTS = 3;              // failed login attempts before lockout
+const OTP_LENGTH = 6;                // digits in the emailed login code
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // wait between "Resend code" clicks
 const LOCK_MS = 60 * 1000;           // 1 minute lock after MAX_ATTEMPTS failed attempts
 const MIN_PASS_LEN = 8;              // minimum password length, enforced on register + change password
 
@@ -727,18 +754,29 @@ const authScreen = document.getElementById('authScreen');
 const appEl = document.getElementById('app');
 const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
+const verifyForm = document.getElementById('verifyForm');
 const loginMsg = document.getElementById('loginMsg');
 const regMsg = document.getElementById('regMsg');
+const verifyMsg = document.getElementById('verifyMsg');
 const authTitle = document.getElementById('authTitle');
 const rulesNote = document.getElementById('rulesNote');
 
+let PENDING_ADMIN = null;       // admin record we're mid-OTP-verifying for
+let RESEND_COOLDOWN_UNTIL = 0;
+
 document.getElementById('showRegister').onclick = ()=>{
-  loginForm.style.display='none'; registerForm.style.display='block';
+  loginForm.style.display='none'; registerForm.style.display='block'; verifyForm.style.display='none';
   authTitle.textContent = 'REGISTER ADMIN';
 };
 document.getElementById('showLogin').onclick = ()=>{
-  registerForm.style.display='none'; loginForm.style.display='block';
+  registerForm.style.display='none'; verifyForm.style.display='none'; loginForm.style.display='block';
   authTitle.textContent = 'ADMIN ACCESS';
+};
+document.getElementById('cancelVerify').onclick = ()=>{
+  PENDING_ADMIN = null;
+  verifyForm.style.display='none'; loginForm.style.display='block';
+  authTitle.textContent = 'ADMIN ACCESS';
+  verifyMsg.textContent=''; document.getElementById('verifyCode').value='';
 };
 
 /* ---- 5-attempt / 1-minute lockout ---- */
@@ -753,17 +791,28 @@ function renderAttemptDots(){
     dot.classList.toggle('used', i < state.count);
   });
   const now = Date.now();
+  const loginBtn = document.getElementById('loginBtn');
+  const verifyBtn = document.getElementById('verifyBtn');
   if(state.lockUntil && state.lockUntil > now){
     const secs = Math.ceil((state.lockUntil - now)/1000);
+    const lockText = `Too many failed attempts. Locked for ${secs}s.`;
     loginMsg.className = 'auth-msg err';
-    loginMsg.textContent = `Too many failed attempts. Locked for ${secs}s.`;
-    document.getElementById('loginBtn').disabled = true;
+    loginMsg.textContent = lockText;
+    loginBtn.disabled = true;
+    if(verifyForm.style.display !== 'none'){
+      verifyMsg.className = 'auth-msg err';
+      verifyMsg.textContent = lockText;
+      verifyBtn.disabled = true;
+    }
   } else if(state.lockUntil && state.lockUntil <= now){
     setAttempts({count:0, lockUntil:0});
-    document.getElementById('loginBtn').disabled = false;
+    loginBtn.disabled = false;
+    verifyBtn.disabled = false;
     loginMsg.textContent='';
+    if(verifyForm.style.display !== 'none') verifyMsg.textContent='';
   } else {
-    document.getElementById('loginBtn').disabled = false;
+    loginBtn.disabled = false;
+    verifyBtn.disabled = false;
   }
 }
 renderAttemptDots();
@@ -790,12 +839,18 @@ async function checkAdminExists(){
 }
 checkAdminExists();
 
+function isValidEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
 registerForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const user = document.getElementById('regUser').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
   regMsg.className='auth-msg';
+  if(!isValidEmail(email)){
+    regMsg.className='auth-msg err'; regMsg.textContent='Enter a valid Gmail/email address for login codes.'; return;
+  }
   if(pass.length < MIN_PASS_LEN){
     regMsg.className='auth-msg err'; regMsg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
   }
@@ -803,7 +858,7 @@ registerForm.addEventListener('submit', async (e)=>{
     regMsg.className='auth-msg err'; regMsg.textContent='Passwords do not match.'; return;
   }
   try{
-    await dbSet('admin', { username:user, password: encode(pass) });
+    await dbSet('admin', { username:user, password: encode(pass), email });
     regMsg.className='auth-msg ok'; regMsg.textContent='Admin created! You can log in now.';
     setTimeout(()=>{
       registerForm.style.display='none'; loginForm.style.display='block';
@@ -835,9 +890,17 @@ loginForm.addEventListener('submit', async (e)=>{
     const ok = (admin.username === user) && (decode(admin.password) === pass);
     if(ok){
       setAttempts({count:0, lockUntil:0});
-      CURRENT_ADMIN = admin.username;
-      loginMsg.className='auth-msg ok'; loginMsg.textContent='Access granted. Entering...';
-      setTimeout(enterApp, 350);
+      if(admin.email){
+        PENDING_ADMIN = admin;
+        loginMsg.className='auth-msg ok'; loginMsg.textContent='Credentials verified. Sending code...';
+        await requestLoginOtp(admin, true);
+      } else {
+        // Legacy account with no email on file yet — let them in, no OTP to send.
+        CURRENT_ADMIN = admin.username;
+        toast('No Gmail on file for this admin — add one in Account Settings to enable login codes.', true);
+        loginMsg.className='auth-msg ok'; loginMsg.textContent='Access granted. Entering...';
+        setTimeout(enterApp, 350);
+      }
     } else {
       const newCount = state.count + 1;
       if(newCount >= MAX_ATTEMPTS){
@@ -856,13 +919,92 @@ loginForm.addEventListener('submit', async (e)=>{
   }
 });
 
+/* ---- OTP step: send + verify ---- */
+async function requestLoginOtp(admin, switchScreen){
+  try{
+    await apiPost('otp','POST',{ username:admin.username, email:admin.email });
+    if(switchScreen){
+      loginForm.style.display='none'; registerForm.style.display='none'; verifyForm.style.display='block';
+      authTitle.textContent = 'VERIFY YOUR IDENTITY';
+      const masked = admin.email.replace(/^(.{2}).+(@.+)$/, '$1***$2');
+      document.getElementById('verifySentTo').textContent = `A ${OTP_LENGTH}-digit code was sent to ${masked}.`;
+      verifyMsg.textContent='';
+      document.getElementById('verifyCode').value='';
+      document.getElementById('verifyCode').focus();
+    } else {
+      toast('A new code has been sent.');
+    }
+    RESEND_COOLDOWN_UNTIL = Date.now() + OTP_RESEND_COOLDOWN_MS;
+    updateResendButton();
+  }catch(err){
+    loginMsg.className='auth-msg err'; loginMsg.textContent='Could not send the login code.';
+    showBackendError("Couldn't reach the Google Sheet backend.", err);
+  }
+}
+
+function updateResendButton(){
+  const btn = document.getElementById('resendOtpBtn');
+  const remaining = Math.ceil((RESEND_COOLDOWN_UNTIL - Date.now())/1000);
+  if(remaining > 0){
+    btn.disabled = true;
+    btn.textContent = `Resend code (${remaining}s)`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'Resend code';
+  }
+}
+setInterval(()=>{ if(verifyForm.style.display !== 'none') updateResendButton(); }, 1000);
+
+document.getElementById('resendOtpBtn').onclick = async ()=>{
+  if(!PENDING_ADMIN || Date.now() < RESEND_COOLDOWN_UNTIL) return;
+  await requestLoginOtp(PENDING_ADMIN, false);
+};
+
+verifyForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const state = getAttempts();
+  const now = Date.now();
+  if(state.lockUntil && state.lockUntil > now){ renderAttemptDots(); return; }
+  if(!PENDING_ADMIN){ verifyMsg.className='auth-msg err'; verifyMsg.textContent='Session expired — please log in again.'; return; }
+
+  const code = document.getElementById('verifyCode').value.trim();
+  verifyMsg.className='auth-msg'; verifyMsg.textContent='Verifying...';
+  try{
+    const result = await apiPost('otp/verify','POST',{ username:PENDING_ADMIN.username, code });
+    if(result && result.valid){
+      setAttempts({count:0, lockUntil:0});
+      CURRENT_ADMIN = PENDING_ADMIN.username;
+      PENDING_ADMIN = null;
+      verifyMsg.className='auth-msg ok'; verifyMsg.textContent='Access granted. Entering...';
+      setTimeout(enterApp, 350);
+    } else {
+      const newCount = state.count + 1;
+      if(newCount >= MAX_ATTEMPTS){
+        setAttempts({count:newCount, lockUntil: Date.now() + LOCK_MS});
+      } else {
+        setAttempts({count:newCount, lockUntil:0});
+      }
+      renderAttemptDots();
+      verifyMsg.className='auth-msg err';
+      const left = MAX_ATTEMPTS - newCount;
+      verifyMsg.textContent = left > 0 ? `Incorrect code. ${left} attempt(s) left.` : 'Incorrect code. Locked for 1 minute.';
+    }
+  }catch(err){
+    verifyMsg.className='auth-msg err'; verifyMsg.textContent='Could not verify the code.';
+    showBackendError("Couldn't reach the Google Sheet backend.", err);
+  }
+});
+
 document.getElementById('logoutBtn').onclick = ()=>{
   CURRENT_ADMIN = null;
+  PENDING_ADMIN = null;
   appEl.classList.remove('active');
   authScreen.style.display='flex';
   loginForm.reset();
+  verifyForm.reset();
   loginForm.style.display='block';
   registerForm.style.display='none';
+  verifyForm.style.display='none';
   authTitle.textContent='ADMIN ACCESS';
 };
 
@@ -875,6 +1017,11 @@ async function enterApp(){
   document.getElementById('adminNameChip').textContent = CURRENT_ADMIN;
   document.getElementById('adminNameTop').textContent = CURRENT_ADMIN;
   document.getElementById('settingsUser').value = CURRENT_ADMIN;
+
+  try{
+    const admin = await dbGet('admin');
+    document.getElementById('settingsEmail').value = (admin && admin.email) || '';
+  }catch(e){ /* non-fatal — settings panel just starts blank */ }
 
   await ensureSeedData();
   await loadAll();
@@ -1217,16 +1364,23 @@ document.getElementById('modalConfirm').onclick = ()=>{
 ========================================================= */
 document.getElementById('savePassBtn').onclick = async ()=>{
   const np = document.getElementById('settingsNewPass').value;
+  const newEmail = document.getElementById('settingsEmail').value.trim();
   const msg = document.getElementById('settingsMsg');
 
-  if(!np){
-    msg.className='auth-msg err'; msg.textContent='Enter a new password to update.'; return;
+  if(newEmail && !isValidEmail(newEmail)){
+    msg.className='auth-msg err'; msg.textContent='Enter a valid Gmail/email address.'; return;
   }
-  if(np.length < MIN_PASS_LEN){
+  if(np && np.length < MIN_PASS_LEN){
     msg.className='auth-msg err'; msg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
   }
+  if(!np && !newEmail){
+    msg.className='auth-msg err'; msg.textContent='Change the password or the Gmail address to save.'; return;
+  }
+  const patch = {};
+  if(np) patch.password = encode(np);
+  if(newEmail) patch.email = newEmail;
   try{
-    await dbPatch('admin', { password: encode(np) });
+    await dbPatch('admin', patch);
     msg.className='auth-msg ok'; msg.textContent='Account updated successfully.';
     document.getElementById('settingsNewPass').value='';
   }catch(err){
