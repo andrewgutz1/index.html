@@ -187,7 +187,7 @@ input,select{font-family:inherit;}
 .stat-card .value.accent-gold{color:var(--gold);}
 .stat-card .value.accent-ok{color:var(--ok);}
 
-.section-head{display:flex;align-items:center;justify-content:between;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
 .section-head h2{font-family:var(--font-display);font-size:17px;color:#f2ede6;letter-spacing:.6px;}
 .section-head .count{font-size:12.5px;color:var(--ash-dim);margin-left:8px;font-weight:500;}
 
@@ -227,7 +227,6 @@ input,select{font-family:inherit;}
 .skin-actions button{flex:1;padding:8px 0;font-size:12px;font-weight:700;letter-spacing:.6px;border-radius:2px;border:1px solid var(--line);}
 .act-edit:hover{border-color:var(--gold-soft);color:var(--gold);}
 .act-del:hover{border-color:var(--danger);color:var(--danger);}
-.act-sell:hover{border-color:var(--ok);color:var(--ok);}
 
 /* forms */
 .panel{background:var(--ember-card);border:1px solid var(--line);padding:22px;max-width:560px;}
@@ -779,7 +778,7 @@ document.getElementById('cancelVerify').onclick = ()=>{
   verifyMsg.textContent=''; document.getElementById('verifyCode').value='';
 };
 
-/* ---- 5-attempt / 1-minute lockout ---- */
+/* ---- 3-attempt / 1-minute lockout ---- */
 function getAttempts(){
   return JSON.parse(localStorage.getItem('d2m_attempts') || '{"count":0,"lockUntil":0}');
 }
@@ -1158,7 +1157,6 @@ function renderSkinGrid(type, gridId, countId){
         </div>
         <div class="skin-actions">
           <button class="act-edit" onclick="editSkin('${id}')">Edit</button>
-          <button class="act-sell" onclick="recordSale('${id}')" ${soldOut?'disabled':''}>Sell 1</button>
           <button class="act-del" onclick="confirmDeleteSkin('${id}')">Delete</button>
         </div>
       </div>
@@ -1299,23 +1297,6 @@ window.confirmDeleteSkin = function(id){
       await loadAll();
     }catch(err){ toast('Delete failed.', true); }
   });
-};
-
-/* record a manual sale (decrement stock, increment sold, add a buyer entry) */
-window.recordSale = async function(id){
-  const s = SKINS[id];
-  if(!s || Number(s.stock||0)<=0) return;
-  const buyerNames = ['MidLaneKing','RadiantRusher','DireDefender','CourierCollector','RoshanRaider','GankSquadPH'];
-  const buyer = buyerNames[Math.floor(Math.random()*buyerNames.length)] + Math.floor(Math.random()*90+10);
-  try{
-    await dbPatch('skins/'+id, { stock: Number(s.stock)-1, sold:(Number(s.sold||0)+1) });
-    await dbPush('sales', {
-      buyer, skin:s.name, hero:s.hero, type:s.type, amount:Number(s.price),
-      date: new Date().toISOString().slice(0,10)
-    });
-    toast(`Sold to ${buyer}.`);
-    await loadAll();
-  }catch(err){ toast('Could not record sale.', true); }
 };
 
 /* =========================================================
