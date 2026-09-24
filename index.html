@@ -342,8 +342,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
       <div class="auth-title" id="authTitle">ADMIN ACCESS</div>
     </div>
 
-    <div id="rulesNote" class="rules-note">Firebase database rules must allow read/write for this demo to save data. If actions fail, set your Realtime Database rules to allow access.</div>
-    <div id="authSetupNote" class="rules-note">Email sending is not fully wired up yet — set GOOGLE_CLIENT_ID near the top of the script (see the comment above it for the Google Cloud Console setup steps), and make sure this file is hosted over http/https rather than opened as a local file, since Google Sign-In requires that. Until it's configured, the verification code will be shown in the browser console instead of emailed, so you can still test the flow.</div>
+    <div id="rulesNote" class="rules-note">Couldn't reach the Google Sheet backend. Make sure APPS_SCRIPT_URL is set near the top of the script, and that the Apps Script Web App is deployed with "Who has access: Anyone".</div>
 
     <!-- LOGIN FORM -->
     <form id="loginForm">
@@ -374,11 +373,6 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
         <input type="text" id="regUser" required>
       </div>
       <div class="field">
-        <label>Gmail Address (for login codes)</label>
-        <input type="email" id="regEmail" placeholder="you@gmail.com" autocomplete="email" required>
-      </div>
-      <div class="field-hint">A 6-digit login code will be emailed here every time you sign in.</div>
-      <div class="field">
         <label>Choose Password (min 8 characters)</label>
         <input type="password" id="regPass" minlength="8" required>
       </div>
@@ -389,25 +383,6 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
       <button type="submit" class="btn btn-primary">CREATE ADMIN ACCOUNT</button>
       <div class="auth-msg" id="regMsg"></div>
       <div class="auth-switch">Already registered? <button type="button" id="showLogin">Back to login</button></div>
-    </form>
-
-    <!-- VERIFICATION CODE FORM -->
-    <form id="verifyForm" style="display:none;">
-      <div style="text-align:center;margin-bottom:18px;">
-        <div class="verify-icon">✉</div>
-        <div style="font-size:13.5px;color:var(--ash-dim);margin-top:8px;">
-          Enter the 6-digit code sent to<br><b id="verifyEmailLabel" style="color:#f2ede6;"></b>
-        </div>
-      </div>
-      <div class="field">
-        <input type="text" id="verifyCodeInput" class="code-input" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code" required>
-      </div>
-      <button type="submit" class="btn btn-primary" id="verifyBtn">VERIFY &amp; ENTER</button>
-      <div class="auth-msg" id="verifyMsg"></div>
-      <div class="resend-row">
-        Didn't get it? <button type="button" id="resendCodeBtn">Resend code</button>
-      </div>
-      <div class="auth-switch"><button type="button" id="cancelVerify">Cancel and go back</button></div>
     </form>
   </div>
 </div>
@@ -551,14 +526,6 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
             <input type="text" id="settingsUser" disabled>
           </div>
           <div class="field-inline">
-            <label>Verification codes sent to</label>
-            <input type="text" id="settingsEmail" disabled>
-          </div>
-          <div class="field-inline">
-            <label>New Verification Email (optional)</label>
-            <input type="email" id="settingsNewEmail" placeholder="Leave blank to keep current">
-          </div>
-          <div class="field-inline">
             <label>New Password (min 8 characters)</label>
             <input type="password" id="settingsNewPass" placeholder="Leave blank to keep current" minlength="8">
           </div>
@@ -599,114 +566,45 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
 
 <div id="toast"></div>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* =========================================================
    CONFIG
 ========================================================= */
-const DB_URL = "https://dota-7c648-default-rtdb.firebaseio.com";
-const MAX_ATTEMPTS = 5;              // failed login attempts before lockout
-const LOCK_MS = 5 * 60 * 1000;       // 5 minute lock after MAX_ATTEMPTS failed attempts
-const MIN_PASS_LEN = 8;              // minimum password length, enforced on register + change password
-const CODE_EXPIRY_MS = 5 * 60 * 1000; // a sent verification code is valid for 5 minutes
-
-/* ---- OTP email delivery, sent from drewwwtangz@gmail.com, via Gmail's own API ----
-   This is Google talking to Google — no third-party mail relay involved.
-   The browser gets a short-lived access token from Google Sign-In, then
-   calls the Gmail API directly to send the mail. A raw Gmail password or
-   app password is never put in this file (that would let anyone who views
-   the page's source take over the account), and this approach doesn't
-   depend on any outside email service.
-
-   The trade-off of doing it this way with no backend server: whichever
-   Google account authorizes in the sign-in popup is the account the mail
-   sends FROM. So every admin needs to authorize once per browser session
-   by signing in as drewwwtangz@gmail.com when prompted.
+/* ---- Google Sheet backend, via a Google Apps Script Web App ----
+   This replaces Firebase entirely — your data now lives in a Google Sheet,
+   read and written through an Apps Script "Web App" endpoint that acts as
+   a tiny REST API. See the companion Code.gs file for the script to paste
+   into Extensions > Apps Script on your Sheet.
 
    SETUP (one-time, free, ~5 minutes):
-   1. Go to https://console.cloud.google.com and create a project (or reuse one).
-   2. APIs & Services → Library → search "Gmail API" → Enable.
-   3. APIs & Services → OAuth consent screen → User type "External" → add the
-      scope https://www.googleapis.com/auth/gmail.send → under "Test users"
-      add drewwwtangz@gmail.com (this skips Google's app-review process,
-      since it's only ever used by you).
-   4. APIs & Services → Credentials → Create Credentials → OAuth client ID →
-      Application type "Web application". Under "Authorized JavaScript
-      origins" add the exact URL this file will be hosted at (e.g.
-      https://your-name.github.io, or http://localhost:5500 for local
-      testing with a dev server) — it must be served over http/https, NOT
-      opened as a local file, or Google Sign-In won't work.
-   5. Copy the generated Client ID into GOOGLE_CLIENT_ID below.
-   6. Host this file over http/https. On first login you'll get a Google
-      consent popup — sign in as drewwwtangz@gmail.com — and likely a
-      "Google hasn't verified this app" warning, which is expected for an
-      app you haven't submitted for review. Click "Advanced" → "Go to
-      (app name) (unsafe)" to proceed; this is safe here since you are the
-      developer and drewwwtangz@gmail.com is your own test user.
+   1. Create a new Google Sheet.
+   2. Create 3 tabs named exactly: Admin, Skins, Sales.
+      - Admin tab, row 1 headers: username | password
+      - Skins tab, row 1 headers: id | hero | name | type | price | stock | sold | image | gif
+      - Sales tab, row 1 headers: id | buyer | skin | hero | type | amount | date
+      (Leave the rest of each sheet empty — the app fills it in.)
+   3. Extensions → Apps Script. Delete any starter code and paste in the
+      contents of Code.gs (provided alongside this file).
+   4. Deploy → New deployment → gear icon → "Web app".
+      - Execute as: Me
+      - Who has access: Anyone
+      Click Deploy, authorize the script when prompted, then copy the
+      "Web app URL" (it ends in /exec).
+   5. Paste that URL into APPS_SCRIPT_URL below.
+   6. Host this HTML file over http/https (or just open it locally — unlike
+      the old Google Sign-In flow, this part works fine from a local file
+      too, since it's a plain fetch() call, not an OAuth popup).
+
+   Whenever you edit Code.gs later, you must create a NEW deployment (or
+   "Manage deployments" → edit → new version) for the changes to take effect
+   on the same /exec URL.
 */
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
-const OTP_SENDER_EMAIL = "drewwwtangz@gmail.com"; // the account that must authorize in the popup
-const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
-const GOOGLE_CONFIGURED = GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const APPS_SCRIPT_CONFIGURED = APPS_SCRIPT_URL.indexOf('PASTE_YOUR') !== 0;
 
-let gTokenClient = null;
-let gmailAccessToken = null;
-
-function initGoogleClient(){
-  if(!GOOGLE_CONFIGURED || !window.google || !google.accounts || !google.accounts.oauth2) return;
-  gTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: GMAIL_SEND_SCOPE,
-    callback: '' // assigned per-request in requestGmailToken()
-  });
-}
-window.addEventListener('load', initGoogleClient);
-
-function requestGmailToken(){
-  return new Promise((resolve, reject)=>{
-    if(!gTokenClient){ reject(new Error('Google Sign-In is not ready — check GOOGLE_CLIENT_ID and that this page is hosted over http/https.')); return; }
-    gTokenClient.callback = (resp)=>{
-      if(resp.error){ reject(resp); return; }
-      gmailAccessToken = resp.access_token;
-      resolve(resp.access_token);
-    };
-    // Silent refresh once already consented this session; otherwise show the consent popup.
-    gTokenClient.requestAccessToken({ prompt: gmailAccessToken ? '' : 'consent' });
-  });
-}
-
-function base64UrlEncode(str){
-  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-
-function buildOtpEmailHtml(code){
-  return `
-  <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:8px 4px;">
-    <h2 style="font-size:20px;color:#111;margin:0 0 18px;">DOTA2 Market Access Code</h2>
-    <p style="font-size:14px;color:#3c4043;margin:0 0 14px;">Use the following 6-digit verification code to sign in:</p>
-    <div style="font-size:34px;font-weight:700;letter-spacing:6px;color:#1a73e8;margin:0 0 18px;">${code}</div>
-    <p style="font-size:13px;color:#5f6368;margin:0 0 4px;">This code expires in 5 minutes.</p>
-    <p style="font-size:12px;color:#80868b;margin-top:20px;">If you didn't request this, you can ignore this email.</p>
-  </div>`;
-}
-
-async function sendOtpEmail(toEmail, code){
-  const token = await requestGmailToken();
-  const subject = 'Your DOTA2 Market Access Code';
-  const html = buildOtpEmailHtml(code);
-  const mime = `To: ${toEmail}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${html}`;
-  const raw = base64UrlEncode(mime);
-  const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ raw })
-  });
-  if(!res.ok){
-    const errBody = await res.text().catch(()=>'');
-    throw new Error('Gmail send failed (' + res.status + '): ' + errBody);
-  }
-  return res.json();
-}
+const MAX_ATTEMPTS = 5;              // failed login attempts before lockout
+const LOCK_MS = 60 * 1000;           // 1 minute lock after MAX_ATTEMPTS failed attempts
+const MIN_PASS_LEN = 8;              // minimum password length, enforced on register + change password
 
 /* =========================================================
    AMBIENT EMBERS
@@ -725,39 +623,39 @@ async function sendOtpEmail(toEmail, code){
 })();
 
 /* =========================================================
-   SIMPLE FIREBASE REST HELPERS
+   GOOGLE SHEET (APPS SCRIPT) REST HELPERS
+   Same function names/signatures as before (dbGet/dbSet/dbPatch/dbPush/
+   dbDelete) so the rest of the app didn't need to change — only what's
+   inside these five functions is new.
 ========================================================= */
 async function dbGet(path){
-  const res = await fetch(`${DB_URL}/${path}.json`);
+  if(!APPS_SCRIPT_CONFIGURED) throw new Error('APPS_SCRIPT_URL is not configured yet.');
+  const res = await fetch(`${APPS_SCRIPT_URL}?path=${encodeURIComponent(path)}`);
   if(!res.ok) throw new Error('DB read failed ('+res.status+')');
-  return res.json();
+  const json = await res.json();
+  if(json && json.error) throw new Error(json.error);
+  return json;
 }
-async function dbSet(path, data){
-  const res = await fetch(`${DB_URL}/${path}.json`, {
-    method:'PUT', body: JSON.stringify(data)
+/* All writes go through one POST helper. Content-Type is deliberately
+   'text/plain' (not 'application/json') — that keeps the request a CORS
+   "simple request" with no preflight OPTIONS call, which Apps Script Web
+   Apps don't handle. Apps Script still reads and JSON.parses the body fine. */
+async function apiPost(path, method, data){
+  if(!APPS_SCRIPT_CONFIGURED) throw new Error('APPS_SCRIPT_URL is not configured yet.');
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ path, method, data })
   });
-  if(!res.ok) throw new Error('DB write failed ('+res.status+')');
-  return res.json();
+  if(!res.ok) throw new Error('DB '+method+' failed ('+res.status+')');
+  const json = await res.json();
+  if(json && json.error) throw new Error(json.error);
+  return json;
 }
-async function dbPatch(path, data){
-  const res = await fetch(`${DB_URL}/${path}.json`, {
-    method:'PATCH', body: JSON.stringify(data)
-  });
-  if(!res.ok) throw new Error('DB update failed ('+res.status+')');
-  return res.json();
-}
-async function dbPush(path, data){
-  const res = await fetch(`${DB_URL}/${path}.json`, {
-    method:'POST', body: JSON.stringify(data)
-  });
-  if(!res.ok) throw new Error('DB push failed ('+res.status+')');
-  return res.json();
-}
-async function dbDelete(path){
-  const res = await fetch(`${DB_URL}/${path}.json`, { method:'DELETE' });
-  if(!res.ok) throw new Error('DB delete failed ('+res.status+')');
-  return res.json();
-}
+async function dbSet(path, data){ return apiPost(path, 'PUT', data); }
+async function dbPatch(path, data){ return apiPost(path, 'PATCH', data); }
+async function dbPush(path, data){ return apiPost(path, 'POST', data); }
+async function dbDelete(path){ return apiPost(path, 'DELETE', null); }
 
 /* currency formatter — Philippine Peso */
 const PHP_FMT = new Intl.NumberFormat('en-PH', { style:'currency', currency:'PHP', minimumFractionDigits:2 });
@@ -818,8 +716,6 @@ const SEED_SALES = [
    STATE
 ========================================================= */
 let CURRENT_ADMIN = null;
-let CURRENT_ADMIN_EMAIL = null;
-let PENDING_ADMIN = null;   // holds the admin record between password-check and code-verify
 let SKINS = {};
 let SALES = {};
 
@@ -830,32 +726,21 @@ const authScreen = document.getElementById('authScreen');
 const appEl = document.getElementById('app');
 const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');
-const verifyForm = document.getElementById('verifyForm');
 const loginMsg = document.getElementById('loginMsg');
 const regMsg = document.getElementById('regMsg');
-const verifyMsg = document.getElementById('verifyMsg');
 const authTitle = document.getElementById('authTitle');
 const rulesNote = document.getElementById('rulesNote');
-const authSetupNote = document.getElementById('authSetupNote');
-
-if(!GOOGLE_CONFIGURED) authSetupNote.classList.add('show');
 
 document.getElementById('showRegister').onclick = ()=>{
-  loginForm.style.display='none'; registerForm.style.display='block'; verifyForm.style.display='none';
+  loginForm.style.display='none'; registerForm.style.display='block';
   authTitle.textContent = 'REGISTER ADMIN';
 };
 document.getElementById('showLogin').onclick = ()=>{
-  registerForm.style.display='none'; loginForm.style.display='block'; verifyForm.style.display='none';
+  registerForm.style.display='none'; loginForm.style.display='block';
   authTitle.textContent = 'ADMIN ACCESS';
-};
-document.getElementById('cancelVerify').onclick = ()=>{
-  PENDING_ADMIN = null;
-  verifyForm.style.display='none'; loginForm.style.display='block';
-  authTitle.textContent = 'ADMIN ACCESS';
-  verifyMsg.textContent=''; document.getElementById('verifyCodeInput').value='';
 };
 
-/* ---- 5-attempt / 5-minute lockout ---- */
+/* ---- 5-attempt / 1-minute lockout ---- */
 function getAttempts(){
   return JSON.parse(localStorage.getItem('d2m_attempts') || '{"count":0,"lockUntil":0}');
 }
@@ -868,10 +753,9 @@ function renderAttemptDots(){
   });
   const now = Date.now();
   if(state.lockUntil && state.lockUntil > now){
-    const mins = Math.floor((state.lockUntil - now)/60000);
-    const secs = Math.ceil(((state.lockUntil - now)%60000)/1000);
+    const secs = Math.ceil((state.lockUntil - now)/1000);
     loginMsg.className = 'auth-msg err';
-    loginMsg.textContent = `Too many failed attempts. Locked for ${mins}:${String(secs).padStart(2,'0')}.`;
+    loginMsg.textContent = `Too many failed attempts. Locked for ${secs}s.`;
     document.getElementById('loginBtn').disabled = true;
   } else if(state.lockUntil && state.lockUntil <= now){
     setAttempts({count:0, lockUntil:0});
@@ -901,13 +785,9 @@ checkAdminExists();
 registerForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const user = document.getElementById('regUser').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
   regMsg.className='auth-msg';
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    regMsg.className='auth-msg err'; regMsg.textContent='Enter a valid email address for login codes.'; return;
-  }
   if(pass.length < MIN_PASS_LEN){
     regMsg.className='auth-msg err'; regMsg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
   }
@@ -915,7 +795,7 @@ registerForm.addEventListener('submit', async (e)=>{
     regMsg.className='auth-msg err'; regMsg.textContent='Passwords do not match.'; return;
   }
   try{
-    await dbSet('admin', { username:user, password: encode(pass), email:email });
+    await dbSet('admin', { username:user, password: encode(pass) });
     regMsg.className='auth-msg ok'; regMsg.textContent='Admin created! You can log in now.';
     setTimeout(()=>{
       registerForm.style.display='none'; loginForm.style.display='block';
@@ -923,36 +803,10 @@ registerForm.addEventListener('submit', async (e)=>{
       document.getElementById('loginUser').value = user;
     }, 900);
   }catch(err){
-    regMsg.className='auth-msg err'; regMsg.textContent='Could not save admin. Check Firebase rules.';
+    regMsg.className='auth-msg err'; regMsg.textContent='Could not save admin. Check your Apps Script setup.';
     rulesNote.classList.add('show');
   }
 });
-
-function generateCode(){
-  return String(Math.floor(100000 + Math.random()*900000));
-}
-
-async function sendVerificationCode(admin){
-  const code = generateCode();
-  const expiresAt = Date.now() + CODE_EXPIRY_MS;
-  await dbPatch('admin', { verifyCode: { code, expiresAt } });
-  const targetEmail = (admin && admin.email) ? admin.email : null;
-
-  if(GOOGLE_CONFIGURED && targetEmail){
-    try{
-      await sendOtpEmail(targetEmail, code);
-      toast(`Verification code sent to ${targetEmail} from ${OTP_SENDER_EMAIL}.`);
-    }catch(err){
-      toast('Could not send the verification email — check your Google Sign-In setup.', true);
-      console.warn('Gmail send failed:', err);
-    }
-  } else {
-    // Dev fallback so the flow is testable before Google Sign-In is configured,
-    // or if this admin record has no email on file yet.
-    console.log(`%c[DEV MODE] Verification code for ${targetEmail || '(no email on file)'}: ${code}`, 'color:#c9972c;font-weight:bold;font-size:14px;');
-    toast(GOOGLE_CONFIGURED ? 'No email on file for this admin — code logged to browser console.' : 'Google Sign-In not configured — code logged to browser console (dev mode).', true);
-  }
-}
 
 loginForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -973,21 +827,9 @@ loginForm.addEventListener('submit', async (e)=>{
     const ok = (admin.username === user) && (decode(admin.password) === pass);
     if(ok){
       setAttempts({count:0, lockUntil:0});
-      loginMsg.className='auth-msg ok'; loginMsg.textContent='Password verified. Sending code...';
-      PENDING_ADMIN = admin;
-      try{
-        await sendVerificationCode(admin);
-      }catch(err){
-        loginMsg.className='auth-msg err'; loginMsg.textContent='Could not generate a verification code.';
-        return;
-      }
-      document.getElementById('verifyEmailLabel').textContent = admin.email || '(no email on file)';
-      loginForm.style.display='none';
-      verifyForm.style.display='block';
-      authTitle.textContent = 'VERIFY YOUR IDENTITY';
-      loginMsg.textContent='';
-      document.getElementById('verifyCodeInput').value='';
-      document.getElementById('verifyCodeInput').focus();
+      CURRENT_ADMIN = admin.username;
+      loginMsg.className='auth-msg ok'; loginMsg.textContent='Access granted. Entering...';
+      setTimeout(enterApp, 350);
     } else {
       const newCount = state.count + 1;
       if(newCount >= MAX_ATTEMPTS){
@@ -998,7 +840,7 @@ loginForm.addEventListener('submit', async (e)=>{
       renderAttemptDots();
       loginMsg.className='auth-msg err';
       const left = MAX_ATTEMPTS - newCount;
-      loginMsg.textContent = left > 0 ? `Incorrect credentials. ${left} attempt(s) left.` : 'Incorrect credentials. Account locked for 5 minutes.';
+      loginMsg.textContent = left > 0 ? `Incorrect credentials. ${left} attempt(s) left.` : 'Incorrect credentials. Account locked for 1 minute.';
     }
   }catch(err){
     loginMsg.className='auth-msg err'; loginMsg.textContent='Connection to database failed.';
@@ -1006,57 +848,12 @@ loginForm.addEventListener('submit', async (e)=>{
   }
 });
 
-verifyForm.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  if(!PENDING_ADMIN){ return; }
-  const entered = document.getElementById('verifyCodeInput').value.trim();
-  verifyMsg.className='auth-msg';
-  try{
-    const admin = await dbGet('admin');
-    const vc = admin && admin.verifyCode;
-    if(!vc){
-      verifyMsg.className='auth-msg err'; verifyMsg.textContent='No pending code — please resend.'; return;
-    }
-    if(Date.now() > vc.expiresAt){
-      verifyMsg.className='auth-msg err'; verifyMsg.textContent='Code expired — please resend.'; return;
-    }
-    if(entered !== vc.code){
-      verifyMsg.className='auth-msg err'; verifyMsg.textContent='Incorrect code. Try again.'; return;
-    }
-    // success
-    await dbPatch('admin', { verifyCode: null });
-    CURRENT_ADMIN = admin.username;
-    CURRENT_ADMIN_EMAIL = admin.email || '';
-    PENDING_ADMIN = null;
-    verifyMsg.className='auth-msg ok'; verifyMsg.textContent='Verified. Entering...';
-    setTimeout(enterApp, 350);
-  }catch(err){
-    verifyMsg.className='auth-msg err'; verifyMsg.textContent='Verification failed — connection error.';
-  }
-});
-
-document.getElementById('resendCodeBtn').onclick = async ()=>{
-  if(!PENDING_ADMIN) return;
-  const btn = document.getElementById('resendCodeBtn');
-  btn.disabled = true;
-  verifyMsg.className='auth-msg'; verifyMsg.textContent='Resending code...';
-  try{
-    await sendVerificationCode(PENDING_ADMIN);
-    verifyMsg.className='auth-msg ok'; verifyMsg.textContent='A new code has been sent.';
-  }catch(err){
-    verifyMsg.className='auth-msg err'; verifyMsg.textContent='Could not resend code.';
-  }
-  setTimeout(()=>{ btn.disabled=false; }, 15000);
-};
-
 document.getElementById('logoutBtn').onclick = ()=>{
   CURRENT_ADMIN = null;
-  CURRENT_ADMIN_EMAIL = null;
   appEl.classList.remove('active');
   authScreen.style.display='flex';
   loginForm.reset();
   loginForm.style.display='block';
-  verifyForm.style.display='none';
   registerForm.style.display='none';
   authTitle.textContent='ADMIN ACCESS';
 };
@@ -1070,7 +867,6 @@ async function enterApp(){
   document.getElementById('adminNameChip').textContent = CURRENT_ADMIN;
   document.getElementById('adminNameTop').textContent = CURRENT_ADMIN;
   document.getElementById('settingsUser').value = CURRENT_ADMIN;
-  document.getElementById('settingsEmail').value = CURRENT_ADMIN_EMAIL || '(not set)';
 
   await ensureSeedData();
   await loadAll();
@@ -1091,7 +887,7 @@ async function ensureSeedData(){
       await dbSet('sales', obj);
     }
   }catch(e){
-    toast('Could not seed sample data — check Firebase rules.', true);
+    toast('Could not seed sample data — check your Apps Script setup.', true);
   }
 }
 
@@ -1100,7 +896,7 @@ async function loadAll(){
     SKINS = await dbGet('skins') || {};
     SALES = await dbGet('sales') || {};
   }catch(e){
-    toast('Failed to load data from Firebase.', true);
+    toast('Failed to load data from the Google Sheet.', true);
     SKINS = {}; SALES = {};
   }
   renderDashboard();
@@ -1339,7 +1135,7 @@ skinForm.addEventListener('submit', async (e)=>{
     resetSkinForm();
     await loadAll();
   }catch(err){
-    toast('Save failed — check Firebase rules.', true);
+    toast('Save failed — check your Apps Script setup.', true);
   }
 });
 
@@ -1409,33 +1205,24 @@ document.getElementById('modalConfirm').onclick = ()=>{
 };
 
 /* =========================================================
-   SETTINGS: change password / email
+   SETTINGS: change password
 ========================================================= */
 document.getElementById('savePassBtn').onclick = async ()=>{
   const np = document.getElementById('settingsNewPass').value;
-  const ne = document.getElementById('settingsNewEmail').value.trim();
   const msg = document.getElementById('settingsMsg');
 
-  if(!np && !ne){
-    msg.className='auth-msg err'; msg.textContent='Enter a new password or email to update.'; return;
+  if(!np){
+    msg.className='auth-msg err'; msg.textContent='Enter a new password to update.'; return;
   }
-  if(np && np.length < MIN_PASS_LEN){
+  if(np.length < MIN_PASS_LEN){
     msg.className='auth-msg err'; msg.textContent=`Password must be at least ${MIN_PASS_LEN} characters.`; return;
   }
-  if(ne && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ne)){
-    msg.className='auth-msg err'; msg.textContent='Enter a valid email address.'; return;
-  }
-  const patch = {};
-  if(np) patch.password = encode(np);
-  if(ne) patch.email = ne;
   try{
-    await dbPatch('admin', patch);
-    if(ne){ CURRENT_ADMIN_EMAIL = ne; document.getElementById('settingsEmail').value = ne; }
+    await dbPatch('admin', { password: encode(np) });
     msg.className='auth-msg ok'; msg.textContent='Account updated successfully.';
     document.getElementById('settingsNewPass').value='';
-    document.getElementById('settingsNewEmail').value='';
   }catch(err){
-    msg.className='auth-msg err'; msg.textContent='Update failed — check Firebase rules.';
+    msg.className='auth-msg err'; msg.textContent='Update failed — check your Apps Script setup.';
   }
 };
 </script>
