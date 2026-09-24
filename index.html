@@ -600,7 +600,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
    "Manage deployments" → edit → new version) for the changes to take effect
    on the same /exec URL.
 */
-const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw1ssp3ZKiXXTzw-JLMdjpbRfqR4V2QSXxD-h-JuEhVSLVTrqgV-Y7rGgCHEmB97PSGsg/exec";
 const APPS_SCRIPT_CONFIGURED = APPS_SCRIPT_URL.indexOf('PASTE_YOUR') !== 0;
 
 const MAX_ATTEMPTS = 5;              // failed login attempts before lockout
@@ -769,6 +769,13 @@ function renderAttemptDots(){
 renderAttemptDots();
 setInterval(renderAttemptDots, 1000);
 
+function showBackendError(prefix, e){
+  const detail = (e && e.message) ? e.message : String(e);
+  rulesNote.textContent = prefix + ' Details: ' + detail;
+  rulesNote.classList.add('show');
+  console.error(prefix, e);
+}
+
 async function checkAdminExists(){
   try{
     const admin = await dbGet('admin');
@@ -778,7 +785,7 @@ async function checkAdminExists(){
       authTitle.textContent = 'REGISTER FIRST ADMIN';
     }
   }catch(e){
-    rulesNote.classList.add('show');
+    showBackendError("Couldn't reach the Google Sheet backend.", e);
   }
 }
 checkAdminExists();
@@ -805,7 +812,7 @@ registerForm.addEventListener('submit', async (e)=>{
     }, 900);
   }catch(err){
     regMsg.className='auth-msg err'; regMsg.textContent='Could not save admin. Check your Apps Script setup.';
-    rulesNote.classList.add('show');
+    showBackendError("Couldn't reach the Google Sheet backend.", err);
   }
 });
 
@@ -845,7 +852,7 @@ loginForm.addEventListener('submit', async (e)=>{
     }
   }catch(err){
     loginMsg.className='auth-msg err'; loginMsg.textContent='Connection to database failed.';
-    rulesNote.classList.add('show');
+    showBackendError("Couldn't reach the Google Sheet backend.", err);
   }
 });
 
