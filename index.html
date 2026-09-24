@@ -577,21 +577,22 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
    into Extensions > Apps Script on your Sheet.
 
    SETUP (one-time, free, ~5 minutes):
-   1. Create a new Google Sheet.
-   2. Create 3 tabs named exactly: Admin, Skins, Sales.
-      - Admin tab, row 1 headers: username | password
-      - Skins tab, row 1 headers: id | hero | name | type | price | stock | sold | image | gif
-      - Sales tab, row 1 headers: id | buyer | skin | hero | type | amount | date
-      (Leave the rest of each sheet empty — the app fills it in.)
-   3. Extensions → Apps Script. Delete any starter code and paste in the
-      contents of Code.gs (provided alongside this file).
-   4. Deploy → New deployment → gear icon → "Web app".
+   1. Create a new Google Sheet (any name, any tab name — a single sheet is
+      all it uses; Admin / Skins / Sales all live side-by-side in it as
+      three column blocks: A–B, D–L, N–T. The script writes its own header
+      row the first time it runs, so you don't need to type anything into
+      the sheet yourself.
+   2. Extensions → Apps Script. Delete any starter code and paste in the
+      contents of Code.gs (provided alongside this file), then set
+      SPREADSHEET_ID near its top to your sheet's ID (the long string in
+      its URL between /d/ and /edit).
+   3. Deploy → New deployment → gear icon → "Web app".
       - Execute as: Me
       - Who has access: Anyone
       Click Deploy, authorize the script when prompted, then copy the
       "Web app URL" (it ends in /exec).
-   5. Paste that URL into APPS_SCRIPT_URL below.
-   6. Host this HTML file over http/https (or just open it locally — unlike
+   4. Paste that URL into APPS_SCRIPT_URL below.
+   5. Host this HTML file over http/https (or just open it locally — unlike
       the old Google Sign-In flow, this part works fine from a local file
       too, since it's a plain fetch() call, not an OAuth popup).
 
