@@ -625,7 +625,7 @@ tbody tr:hover{background:rgba(226,36,42,0.04);}
    "Manage deployments" → edit → new version) for the changes to take effect
    on the same /exec URL.
 */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyKDsEsm0Vc7fp_8YZMBmrGGsctXhoh6iqkYF5TsG_0j-fk0H3R9qyL8sAJbjE29kcqUQ/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw2YCzwFj5_Hs03FLEOe0LB9qc0vZKhXK-hogIgy6cGFcpuz7twmE0IAtuS9cYtyuZnNg/exec";
 const APPS_SCRIPT_CONFIGURED = APPS_SCRIPT_URL.indexOf('PASTE_YOUR') !== 0;
 
 const MAX_ATTEMPTS = 3;              // failed login attempts before lockout
@@ -889,18 +889,15 @@ loginForm.addEventListener('submit', async (e)=>{
     }
     const ok = (admin.username === user) && (decode(admin.password) === pass);
     if(ok){
-      setAttempts({count:0, lockUntil:0});
-      if(admin.email){
-        PENDING_ADMIN = admin;
-        loginMsg.className='auth-msg ok'; loginMsg.textContent='Credentials verified. Sending code...';
-        await requestLoginOtp(admin, true);
-      } else {
-        // Legacy account with no email on file yet — let them in, no OTP to send.
-        CURRENT_ADMIN = admin.username;
-        toast('No Gmail on file for this admin — add one in Account Settings to enable login codes.', true);
-        loginMsg.className='auth-msg ok'; loginMsg.textContent='Access granted. Entering...';
-        setTimeout(enterApp, 350);
+      if(!admin.email){
+        loginMsg.className='auth-msg err';
+        loginMsg.textContent = 'This admin has no Gmail on file, so a login code cannot be sent. Open your Google Sheet and put your Gmail address directly in column C, row 2 (next to the username/password), then try logging in again.';
+        return;
       }
+      setAttempts({count:0, lockUntil:0});
+      PENDING_ADMIN = admin;
+      loginMsg.className='auth-msg ok'; loginMsg.textContent='Credentials verified. Sending code...';
+      await requestLoginOtp(admin, true);
     } else {
       const newCount = state.count + 1;
       if(newCount >= MAX_ATTEMPTS){
