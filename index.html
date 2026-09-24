@@ -1381,6 +1381,14 @@ document.getElementById('savePassBtn').onclick = async ()=>{
   if(newEmail) patch.email = newEmail;
   try{
     await dbPatch('admin', patch);
+    if(newEmail){
+      const check = await dbGet('admin');
+      if(!check || check.email !== newEmail){
+        msg.className='auth-msg err';
+        msg.textContent = 'Password saved, but the Gmail address did not persist. Your Apps Script Web App is likely running an older deployment — redeploy Code.gs (Deploy → Manage deployments → New version) and try again.';
+        return;
+      }
+    }
     msg.className='auth-msg ok'; msg.textContent='Account updated successfully.';
     document.getElementById('settingsNewPass').value='';
   }catch(err){
